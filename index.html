@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tablet Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#146EFF">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body { height: 100%; }
+    .card-used { opacity: 0.6; }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance:textfield; }
+  </style>
+</head>
+<body class="bg-gray-50 h-full">
+  <main class="max-w-3xl mx-auto p-4 pb-24">
+    <header class="sticky top-0 bg-gray-50/90 backdrop-blur z-10 pt-2 pb-3 mb-2">
+      <h1 class="text-2xl font-bold tracking-tight">Tablet Tracker</h1>
+      <p class="text-sm text-gray-600">Filter by purchase status per date. Works offline & installable.</p>
+      <div class="mt-3 grid grid-cols-2 gap-2">
+        <input id="datePicker" type="date" class="border rounded-xl px-3 py-2 w-full" />
+        <div class="flex gap-2 justify-end">
+          <button id="btnResetDay" class="px-3 py-2 rounded-xl border bg-white">Reset day</button>
+          <button id="btnExport" class="px-3 py-2 rounded-xl border bg-white">Export CSV</button>
+        </div>
+      </div>
+      <div class="mt-3 grid grid-cols-1 sm:grid-cols-6 gap-2">
+        <div class="sm:col-span-2 flex items-center border rounded-xl bg-white px-3">
+          <span class="text-sm text-gray-500 mr-2">Range</span>
+          <input id="rangeStart" type="number" class="w-16 px-2 py-1 border rounded-lg" />
+          <span class="mx-1 text-gray-400">to</span>
+          <input id="rangeEnd" type="number" class="w-16 px-2 py-1 border rounded-lg" />
+          <button id="btnApplyRange" class="ml-2 px-3 py-1 rounded-lg border text-sm">Apply</button>
+        </div>
+        <input id="searchInput" placeholder="Search tablet # or customer" class="sm:col-span-2 border rounded-xl px-3 py-2 bg-white" />
+        <select id="filterSelect" class="sm:col-span-2 border rounded-xl px-3 py-2 bg-white">
+          <option value="all">Show: All</option>
+          <option value="purchased">Show: Purchased</option>
+          <option value="not">Show: Not purchased</option>
+        </select>
+      </div>
+      <div class="mt-3">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-700"><span id="usedCount">0</span>/<span id="totalCount">0</span> purchased</div>
+          <div id="allUsedBadge" class="hidden text-xs px-2 py-1 rounded-full bg-green-600 text-white">All tablets purchased 🎉</div>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+          <div id="progressBar" class="bg-blue-600 h-2 rounded-full" style="width:0%"></div>
+        </div>
+      </div>
+    </header>
+
+    <section>
+      <div id="cards" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2"></div>
+    </section>
+
+    <footer class="fixed bottom-0 inset-x-0 bg-white border-t p-3">
+      <div class="max-w-3xl mx-auto flex gap-2">
+        <button id="btnInstall" class="flex-1 px-3 py-3 rounded-xl border bg-white">Install (Add to Home)</button>
+        <button id="btnBackup" class="flex-1 px-3 py-3 rounded-xl border bg-white">Backup JSON</button>
+        <button id="btnRestore" class="flex-1 px-3 py-3 rounded-xl border bg-white">Restore</button>
+        <input id="restoreFile" type="file" accept="application/json" class="hidden">
+      </div>
+    </footer>
+  </main>
+
+<script>
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+const STORAGE_KEY = 'tablet-tracker-v2';
+let state = loadState();
+let deferredPrompt = null;
+
+if (!state.range) state.range = { start: 51, end: 99 };
+if (!state.days) state.days = {};
+
+function todayISO() {
+  const d = new Date();
+  const tzOffset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - tzOffset*60000);
+  return local.toISOString().slice(0,10);
+}
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function ensureDay(date) {
+  if (!state.days[date]) {
+    const dayData = {};
+    for (let n = state.range.start; n <= state.range.end; n++) {
+      dayData[String(n)] = { used: false, customer: "" };
+    }
+    state.days[date] = dayData;
+  }
+}
+function setRange(start, end) {
+  state.range = { start, end };
+  Object.keys(state.days).forEach(date => {
+    const day = state.days[date];
+    for (let n = start; n <= end; n++) {
+      const k = String(n);
+      if (!day[k]) day[k] = { used:false, customer:"" };
+    }
+    Object.keys(day).forEach(k => {
+      const num = Number(k);
+      if (num < start || num > end) delete day[k];
+    });
+  });
+  saveState();
+}
+
+function render(date) {
+  ensureDay(date);
+  $('#datePicker').value = date;
+  $('#rangeStart').value = state.range.start;
+  $('#rangeEnd').value = state.range.end;
+
+  const q = $('#searchInput').value.trim().toLowerCase();
+  const filter = $('#filterSelect').value || 'all';
+  const day = state.days[date];
+  const entries = Object.entries(day).sort((a,b)=>Number(a[0])-Number(b[0]));
+
+  const container = $('#cards');
+  container.innerHTML = '';
+  entries.forEach(([id, info]) => {
+    let passFilter = true;
+    if (filter === 'purchased') passFilter = !!info.used;
+    else if (filter === 'not') passFilter = !info.used;
+    const match = (!q || id.includes(q) || (info.customer && info.customer.toLowerCase().includes(q))) && passFilter;
+    if (!match) return;
+    const card = document.createElement('div');
+    card.className = `rounded-2xl border bg-white p-3 ${info.used ? 'card-used' : ''}`;
+    card.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="font-semibold">#${id}</div>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" ${info.used ? 'checked' : ''} data-id="${id}" class="h-5 w-5">
+          <span>${info.used ? 'Purchased' : 'Not purchased'}</span>
+        </label>
+      </div>
+      <input placeholder="Customer name" value="${info.customer || ''}" data-id="${id}" class="mt-2 w-full border rounded-xl px-3 py-2" />
+    `;
+    container.appendChild(card);
+  });
+
+  const fullTotal = Object.keys(day).length;
+  const purchasedCount = Object.values(day).filter(x=>x.used).length;
+  $('#usedCount').textContent = purchasedCount;
+  $('#totalCount').textContent = fullTotal;
+  const pct = fullTotal ? Math.round(100*purchasedCount/fullTotal) : 0;
+  $('#progressBar').style.width = pct + '%';
+  $('#allUsedBadge').classList.toggle('hidden', purchasedCount !== fullTotal);
+
+  $$('#cards input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const id = e.target.getAttribute('data-id');
+      state.days[date][id].used = e.target.checked;
+      saveState();
+      render(date);
+    });
+  });
+  $$('#cards input[type="text"], #cards input:not([type])').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const id = e.target.getAttribute('data-id');
+      state.days[date][id].customer = e.target.value;
+      saveState();
+    });
+  });
+}
+
+$('#btnApplyRange').addEventListener('click', () => {
+  const s = Number($('#rangeStart').value);
+  const e = Number($('#rangeEnd').value);
+  if (Number.isFinite(s) && Number.isFinite(e) && s <= e) {
+    setRange(s, e);
+    render($('#datePicker').value || todayISO());
+  } else {
+    alert('Invalid range');
+  }
+});
+$('#btnResetDay').addEventListener('click', () => {
+  const date = $('#datePicker').value || todayISO();
+  if (confirm(`Reset ${date}? Marks and names will be cleared.`)) {
+    const start = state.range.start, end = state.range.end;
+    state.days[date] = {};
+    for (let n = start; n <= end; n++) state.days[date][String(n)] = { used:false, customer:"" };
+    saveState();
+    render(date);
+  }
+});
+$('#btnExport').addEventListener('click', () => {
+  const date = $('#datePicker').value || todayISO();
+  const day = state.days[date] || {};
+  const rows = [["date","tablet","purchased","customer"]];
+  Object.entries(day).forEach(([id,info]) => rows.push([date, id, info.used ? "1" : "0", (info.customer||"").replace(/"/g, '""')]));
+  const csv = rows.map(r => r.map(x => `"${String(x)}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type: "text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tablet-tracker-${date}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+$('#btnBackup').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tablet-tracker-backup.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+$('#btnRestore').addEventListener('click', () => $('#restoreFile').click());
+$('#restoreFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      state = data;
+      saveState();
+      render($('#datePicker').value || todayISO());
+      alert('Restore complete');
+    } catch (err) {
+      alert('Invalid JSON');
+    }
+  };
+  reader.readAsText(file);
+});
+$('#searchInput').addEventListener('input', () => render($('#datePicker').value || todayISO()));
+$('#filterSelect').addEventListener('change', () => render($('#datePicker').value || todayISO()));
+$('#datePicker').addEventListener('change', () => render($('#datePicker').value));
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
+$('#btnInstall').addEventListener('click', async () => {
+  if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; }
+  else { alert('Use your browser menu: Add to Home Screen.'); }
+});
+window.addEventListener('load', () => {
+  const d = todayISO();
+  $('#datePicker').value = d;
+  render(d);
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
+});
+</script>
+</body>
+</html>
