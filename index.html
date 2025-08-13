@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="he" dir="rtl" class="h-full">
+<html lang=\"he\" dir=\"rtl\" class=\"h-full\">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\" />
   <title>מעקב טאבלטים — בזמן אמת</title>
-  <meta name="theme-color" content="#146EFF">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name=\"theme-color\" content=\"#146EFF\">
+  <script src=\"https://cdn.tailwindcss.com\"></script>
   <style>
     html, body { height: 100%; font-size: 18px; -webkit-tap-highlight-color: transparent; }
     .card-purchased { background-color: #d1fae5; }   /* ירוק */
@@ -25,159 +25,176 @@
     .seg button.active { background:#2563eb; color:white; border-color:#2563eb; }
     .sticky-footer { position: sticky; bottom: 0; background: white; border-top: 1px solid #e5e7eb; padding: 10px; }
     button, input, select, textarea { font-size: 18px; }
+    #errorBanner { position: fixed; inset-inline: 0; bottom: 0; z-index: 50; display: none; }
   </style>
 </head>
-<body class="bg-gray-50 h-full">
-<main class="max-w-3xl mx-auto p-4 pb-28" id="root">
+<body class=\"bg-gray-50 h-full\">
+<main class=\"max-w-3xl mx-auto p-4 pb-28\" id=\"root\">
 
   <!-- מסך הגדרות (פעם ראשונה) -->
-  <section id="setup" class="hidden">
-    <h1 class="text-3xl font-bold text-center">מעקב טאבלטים — הגדרות</h1>
-    <p class="mt-2 text-gray-700 text-center">הדבק קונפיגורציית Firebase + מזהה צוות. פעולה חד‑פעמית למכשיר.</p>
-    <div class="mt-4 grid gap-3">
-      <label class="block">
-        <span class="text-sm text-gray-600">קובץ קונפיגורציה של Firebase (JSON)</span>
-        <textarea id="cfgJson" class="mt-1 w-full border rounded-xl p-3" rows="8" placeholder='{"apiKey":"","authDomain":"","projectId":"","appId":""}'></textarea>
+  <section id=\"setup\" class=\"hidden\">
+    <h1 class=\"text-3xl font-bold text-center\">מעקב טאבלטים — הגדרות</h1>
+    <p class=\"mt-2 text-gray-700 text-center\">הדבק קונפיגורציית Firebase + מזהה צוות. פעולה חד‑פעמית למכשיר.</p>
+    <div class=\"mt-4 grid gap-3\">
+      <label class=\"block\">
+        <span class=\"text-sm text-gray-600\">קובץ קונפיגורציה של Firebase (JSON)</span>
+        <textarea id=\"cfgJson\" class=\"mt-1 w-full border rounded-xl p-3\" rows=\"8\" placeholder='{"apiKey":"","authDomain":"","projectId":"","appId":""}'></textarea>
       </label>
-      <label class="block">
-        <span class="text-sm text-gray-600">מזהה צוות / ארגון</span>
-        <input id="orgId" class="mt-1 w-full border rounded-xl p-3" placeholder="my-shop" />
+      <label class=\"block\">
+        <span class=\"text-sm text-gray-600\">מזהה צוות / ארגון</span>
+        <input id=\"orgId\" class=\"mt-1 w-full border rounded-xl p-3\" placeholder=\"my-shop\" />
       </label>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <button id="btnSaveCfg" class="btn btn-lg btn-blue">שמור והתחל</button>
-        <button id="btnTestCfg" class="btn btn-lg btn-outline">בדיקת חיבור</button>
-        <button id="btnCopyInvite" class="btn btn-lg btn-outline">העתק קישור הזמנה</button>
+      <div class=\"grid grid-cols-1 sm:grid-cols-3 gap-2\">
+        <button id=\"btnSaveCfg\" class=\"btn btn-lg btn-blue\">שמור והתחל</button>
+        <button id=\"btnTestCfg\" class=\"btn btn-lg btn-outline\">בדיקת חיבור</button>
+        <button id=\"btnCopyInvite\" class=\"btn btn-lg btn-outline\">העתק קישור הזמנה</button>
       </div>
-      <p id="setupStatus" class="text-sm text-gray-600 mt-2"></p>
+      <p id=\"setupStatus\" class=\"text-sm text-gray-600 mt-2\"></p>
     </div>
   </section>
 
   <!-- אפליקציה (לאחר שמירה) -->
-  <section id="app" class="hidden">
-    <header class="sticky top-0 bg-gray-50/90 backdrop-blur z-10 pt-2 pb-3 mb-2">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <h1 class="text-2xl font-extrabold">מעקב טאבלטים</h1>
-          <button id="btnHelp" class="btn btn-sm" title="עזרה">❓</button>
+  <section id=\"app\" class=\"hidden\">
+    <header class=\"sticky top-0 bg-gray-50/90 backdrop-blur z-10 pt-2 pb-3 mb-2\">
+      <div class=\"flex items-center justify-between\">
+        <div class=\"flex items-center gap-3\">
+          <h1 class=\"text-2xl font-extrabold\">מעקב טאבלטים</h1>
+          <button id=\"btnHelp\" class=\"btn btn-sm\" title=\"עזרה\">❓</button>
         </div>
-        <div class="flex gap-2">
-          <button id="btnMaint" class="btn btn-sm">מצב תחזוקה</button>
-          <button id="btnReset" class="btn btn-sm btn-red">איפוס יום</button>
+        <div class=\"flex gap-2\">
+          <button id=\"btnMaint\" class=\"btn btn-sm\">מצב תחזוקה</button>
+          <button id=\"btnReset\" class=\"btn btn-sm btn-red\">איפוס יום</button>
         </div>
       </div>
 
       <!-- מונים -->
-      <div class="mt-3 grid grid-cols-3 gap-2 text-center">
-        <div class="rounded-2xl border bg-white p-3">
-          <div class="text-sm text-gray-500">נרכשו</div>
-          <div id="countPurchased" class="text-2xl font-bold">0</div>
+      <div class=\"mt-3 grid grid-cols-3 gap-2 text-center\">
+        <div class=\"rounded-2xl border bg-white p-3\">
+          <div class=\"text-sm text-gray-500\">נרכשו</div>
+          <div id=\"countPurchased\" class=\"text-2xl font-bold\">0</div>
         </div>
-        <div class="rounded-2xl border bg-white p-3">
-          <div class="text-sm text-gray-500">לא נרכשו</div>
-          <div id="countUnused" class="text-2xl font-bold">0</div>
+        <div class=\"rounded-2xl border bg-white p-3\">
+          <div class=\"text-sm text-gray-500\">לא נרכשו</div>
+          <div id=\"countUnused\" class=\"text-2xl font-bold\">0</div>
         </div>
-        <div class="rounded-2xl border bg-white p-3">
-          <div class="text-sm text-gray-500">תחזוקה</div>
-          <div id="countMaint" class="text-2xl font-bold">0</div>
+        <div class=\"rounded-2xl border bg-white p-3\">
+          <div class=\"text-sm text-gray-500\">תחזוקה</div>
+          <div id=\"countMaint\" class=\"text-2xl font-bold\">0</div>
         </div>
       </div>
 
       <!-- פס הסבר צבעים -->
-      <div class="mt-3 flex items-center gap-3 text-sm text-gray-700">
-        <span class="chip chip-green">נרכש</span>
-        <span class="chip chip-gray">לא נרכש</span>
-        <span class="chip chip-yellow">תחזוקה (מוסתר ברשימה)</span>
+      <div class=\"mt-3 flex items-center gap-3 text-sm text-gray-700\">
+        <span class=\"chip chip-green\">נרכש</span>
+        <span class=\"chip chip-gray\">לא נרכש</span>
+        <span class=\"chip chip-yellow\">תחזוקה (מוסתר ברשימה)</span>
       </div>
 
       <!-- מסנן -->
-      <div class="seg mt-3 grid grid-cols-3 gap-2">
-        <button data-filter="all"        class="active">הכל</button>
-        <button data-filter="not">לא</button>
-        <button data-filter="purchased">נרכש</button>
+      <div class=\"seg mt-3 grid grid-cols-3 gap-2\">
+        <button data-filter=\"all\"        class=\"active\">הכל</button>
+        <button data-filter=\"not\">לא</button>
+        <button data-filter=\"purchased\">נרכש</button>
       </div>
 
-      <input id="searchInput" placeholder="חיפוש מספר טאבלט" class="mt-3 border rounded-xl px-3 py-3 w-full bg-white" />
-      <div class="mt-1 text-sm text-gray-600" id="status">מתחבר…</div>
+      <input id=\"searchInput\" placeholder=\"חיפוש מספר טאבלט\" class=\"mt-3 border rounded-xl px-3 py-3 w-full bg-white\" />
+      <div class=\"mt-1 text-sm text-gray-600\" id=\"status\">מתחבר…</div>
     </header>
 
     <!-- כרטיסים (תחזוקה מוסתרת ברשימה הראשית) -->
-    <section class="mt-4">
-      <div id="cards" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+    <section class=\"mt-4\">
+      <div id=\"cards\" class=\"grid grid-cols-2 sm:grid-cols-3 gap-3\"></div>
     </section>
 
     <!-- פעולות תחתונות דביקות -->
-    <div class="sticky-footer">
-      <div class="grid grid-cols-2 gap-2">
-        <button id="btnExport" class="btn btn-lg btn-outline">ייצוא CSV</button>
-        <button id="btnMaint2" class="btn btn-lg">מצב תחזוקה</button>
+    <div class=\"sticky-footer\">
+      <div class=\"grid grid-cols-2 gap-2\">
+        <button id=\"btnExport\" class=\"btn btn-lg btn-outline\">ייצוא CSV</button>
+        <button id=\"btnMaint2\" class=\"btn btn-lg\">מצב תחזוקה</button>
       </div>
     </div>
   </section>
 </main>
 
 <!-- חלון מצב תחזוקה (מוגן PIN) -->
-<div id="maintModal" class="hidden fixed inset-0 bg-black/40 z-20 flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl p-4 w-full max-w-md max-h-[85vh] overflow-auto">
-    <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold">מצב תחזוקה</h2>
-      <button id="maintClose" class="btn btn-sm">סגור</button>
+<div id=\"maintModal\" class=\"hidden fixed inset-0 bg-black/40 z-20 flex items-center justify-center p-4\">
+  <div class=\"bg-white rounded-2xl p-4 w-full max-w-md max-h-[85vh] overflow-auto\">
+    <div class=\"flex items-center justify-between\">
+      <h2 class=\"text-xl font-semibold\">מצב תחזוקה</h2>
+      <button id=\"maintClose\" class=\"btn btn-sm\">סגור</button>
     </div>
-    <p class="text-sm text-gray-600 mt-2">מצב תחזוקה מסתיר טאבלט מהרשימה הראשית ולא סופרים אותו.</p>
-    <div id="maintPinWrap" class="mt-3">
-      <input id="maintPin" inputmode="numeric" maxlength="4" placeholder="הכנס קוד PIN" class="w-full border rounded-xl px-3 py-3" />
-      <button id="maintPinOk" class="btn btn-lg btn-blue w-full mt-2">כניסה</button>
-      <p class="text-sm text-gray-600 mt-1">ברירת מחדל: 4321</p>
+    <p class=\"text-sm text-gray-600 mt-2\">מצב תחזוקה מסתיר טאבלט מהרשימה הראשית ולא סופרים אותו.</p>
+    <div id=\"maintPinWrap\" class=\"mt-3\">
+      <input id=\"maintPin\" inputmode=\"numeric\" maxlength=\"4\" placeholder=\"הכנס קוד PIN\" class=\"w-full border rounded-xl px-3 py-3\" />
+      <button id=\"maintPinOk\" class=\"btn btn-lg btn-blue w-full mt-2\">כניסה</button>
+      <p class=\"text-sm text-gray-600 mt-1\">ברירת מחדל: 4321</p>
     </div>
-    <div id="maintBody" class="hidden mt-3">
-      <input id="maintSearch" placeholder="חיפוש מספר טאבלט" class="border rounded-xl px-3 py-2 w-full" />
-      <div id="maintCards" class="grid grid-cols-2 gap-2 mt-3"></div>
+    <div id=\"maintBody\" class=\"hidden mt-3\">
+      <input id=\"maintSearch\" placeholder=\"חיפוש מספר טאבלט\" class=\"border rounded-xl px-3 py-2 w-full\" />
+      <div id=\"maintCards\" class=\"grid grid-cols-2 gap-2 mt-3\"></div>
     </div>
   </div>
 </div>
 
 <!-- חלון עזרה / היכרות מהירה -->
-<div id="helpModal" class="hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl p-4 w-full max-w-md">
-    <h2 class="text-xl font-bold">איך עובדים?</h2>
-    <ol class="list-decimal pr-6 mt-2 space-y-2 text-gray-700 text-sm">
+<div id=\"helpModal\" class=\"hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center p-4\">
+  <div class=\"bg-white rounded-2xl p-4 w-full max-w-md\">
+    <h2 class=\"text-xl font-bold\">איך עובדים?</h2>
+    <ol class=\"list-decimal pr-6 mt-2 space-y-2 text-gray-700 text-sm\">
       <li>הרשימה כוללת את הטאבלטים #51–#99 בלבד.</li>
       <li>כדי לסמן קנייה: לחץ על <b>סמן כנרכש</b>. אפשר לפלטר לפי נרכש/לא.</li>
       <li>כדי לבטל קנייה: לחץ <b>סמן כלא</b> ותופיע בקשת אישור.</li>
       <li>כדי להכניס/להוציא מתחזוקה: פתח <b>מצב תחזוקה</b> (עם PIN).</li>
       <li>כדי לאפס את היום: <b>איפוס יום</b> (עם PIN).</li>
     </ol>
-    <button id="helpClose" class="btn btn-lg btn-blue w-full mt-3">הבנתי</button>
+    <button id=\"helpClose\" class=\"btn btn-lg btn-blue w-full mt-3\">הבנתי</button>
   </div>
 </div>
 
 <!-- חלון אישור עבור שינוי מ״נרכש״ ל״לא״ -->
-<div id="confirmModal" class="hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center">
-  <div class="bg-white rounded-2xl p-4 w-80">
-    <h2 class="text-lg font-semibold">להחזיר מ״נרכש״ ל״לא״?</h2>
-    <p class="text-sm text-gray-600 mt-1">זה מגן מפני שינוי בטעות.</p>
-    <div class="mt-3 grid grid-cols-2 gap-2">
-      <button id="confirmToUnused" class="btn btn-lg">החזר ללא</button>
-      <button id="confirmCancel" class="btn btn-lg btn-outline">ביטול</button>
+<div id=\"confirmModal\" class=\"hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center\">
+  <div class=\"bg-white rounded-2xl p-4 w-80\">
+    <h2 class=\"text-lg font-semibold\">להחזיר מ״נרכש״ ל״לא״?</h2>
+    <p class=\"text-sm text-gray-600 mt-1\">זה מגן מפני שינוי בטעות.</p>
+    <div class=\"mt-3 grid grid-cols-2 gap-2\">
+      <button id=\"confirmToUnused\" class=\"btn btn-lg\">החזר ללא</button>
+      <button id=\"confirmCancel\" class=\"btn btn-lg btn-outline\">ביטול</button>
     </div>
   </div>
 </div>
 
-<script type="module">
-  /* ----------------------- קונפיג & עזרים ----------------------- */
+<!-- באנר שגיאות מובנה -->
+<div id=\"errorBanner\" class=\"mx-auto max-w-3xl\">
+  <div class=\"m-3 rounded-xl bg-red-600 text-white p-3 text-sm\"></div>
+</div>
+
+<script type=\"module\">
+  // ===== Error banner for mobile =====
+  const errorBanner = document.getElementById('errorBanner');
+  function showError(msg){
+    const box = errorBanner.firstElementChild;
+    box.textContent = msg;
+    errorBanner.style.display = 'block';
+    setTimeout(()=>{ errorBanner.style.display='none'; }, 7000);
+  }
+  window.addEventListener('error', (e)=> showError(e.message || 'שגיאה כללית'));
+  window.addEventListener('unhandledrejection', (e)=> showError(e.reason?.message || 'שגיאה כללית'));
+
+  // ===== Config & helpers (ASCII-only code) =====
   const STORAGE_KEYS = ['tt-rt-config-v2','tt-rt-config-v1','tt-rt-config'];
   const SAVE_KEY = 'tt-rt-config-v2';
   const RESET_PIN = '4321';
   const RANGE_START = 51, RANGE_END = 99;
   const ONBOARD_KEY = 'tt-onboard-seen';
 
-  const $  = s => document.querySelector(s);
-  const $$ = s => Array.from(document.querySelectorAll(s));
-  const statusEl = $('#status');
+  const $  = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const statusEl = document.getElementById('status');
 
   const urlParams = new URLSearchParams(location.search);
-  const b64 = obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-  const fromB64 = s => { try { return JSON.parse(decodeURIComponent(escape(atob(s)))); } catch { return null; } };
-  const saveCfg = cfg => localStorage.setItem(SAVE_KEY, JSON.stringify(cfg));
+  const b64 = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+  const fromB64 = (s) => { try { return JSON.parse(decodeURIComponent(escape(atob(s)))); } catch { return null; } };
+  const saveCfg = (cfg) => localStorage.setItem(SAVE_KEY, JSON.stringify(cfg));
   const tryLoad = () => { for (const k of STORAGE_KEYS) { try { const v = localStorage.getItem(k); if (v) return JSON.parse(v); } catch {} } return {}; };
   const todayISO = () => { const d=new Date(); const tz=d.getTimezoneOffset(); return new Date(d - tz*60000).toISOString().slice(0,10); };
 
@@ -188,41 +205,47 @@
 
   const cfg = tryLoad();
   const hasCfg = !!cfg.firebase;
-  $('#setup').classList.toggle('hidden', hasCfg);
-  $('#app').classList.toggle('hidden', !hasCfg);
+  document.getElementById('setup').classList.toggle('hidden', hasCfg);
+  document.getElementById('app').classList.toggle('hidden', !hasCfg);
 
-  /* ---------------------------- מסך הגדרות ---------------------------- */
+  // ===== Setup screen =====
   if (!hasCfg) {
-    $('#btnSaveCfg').addEventListener('click', () => {
-      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='JSON לא תקין'; return; }
-      const orgId = $('#orgId').value.trim() או 'default-org';
+    document.getElementById('btnSaveCfg').addEventListener('click', () => {
+      let firebaseCfg;
+      try { firebaseCfg = JSON.parse(document.getElementById('cfgJson').value.trim()); }
+      catch { document.getElementById('setupStatus').textContent = 'JSON לא תקין'; return; }
+      const orgId = (document.getElementById('orgId').value.trim() || 'default-org');
       saveCfg({ firebase: firebaseCfg, orgId });
       location.reload();
     });
-    $('#btnTestCfg').addEventListener('click', async () => {
-      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='JSON לא תקין'; return; }
-      $('#setupStatus').textContent='בודק חיבור…';
+    document.getElementById('btnTestCfg').addEventListener('click', async () => {
+      let firebaseCfg;
+      try { firebaseCfg = JSON.parse(document.getElementById('cfgJson').value.trim()); }
+      catch { document.getElementById('setupStatus').textContent='JSON לא תקין'; return; }
+      document.getElementById('setupStatus').textContent='בודק חיבור…';
       try {
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
         const { getAuth, signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
-        const app = initializeApp(firebaseCfg); const auth = getAuth(app);
+        const app = initializeApp(firebaseCfg);
+        const auth = getAuth(app);
         await signInAnonymously(auth);
-        $('#setupStatus').textContent='הצלחה! שמור והתחל.';
-      } catch (e) { console.error(e); $('#setupStatus').textContent='נכשל. בדוק את ההגדרות.'; }
+        document.getElementById('setupStatus').textContent='הצלחה! שמור והתחל.';
+      } catch (e) { console.error(e); document.getElementById('setupStatus').textContent='נכשל. בדוק את ההגדרות.'; }
     });
-    $('#btnCopyInvite').addEventListener('click', () => {
-      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { alert('JSON לא תקין'); return; }
-      const orgId = $('#orgId').value.trim() או 'default-org';
+    document.getElementById('btnCopyInvite').addEventListener('click', () => {
+      let firebaseCfg;
+      try { firebaseCfg = JSON.parse(document.getElementById('cfgJson').value.trim()); }
+      catch { alert('JSON לא תקין'); return; }
+      const orgId = (document.getElementById('orgId').value.trim() || 'default-org');
       const url = location.origin + location.pathname + '?config=' + b64({ firebase: firebaseCfg, orgId });
       navigator.clipboard.writeText(url).then(()=> alert('קישור הועתק!'));
     });
   }
 
-  /* ------------------------------ אפליקציה ------------------------------ */
+  // ===== App (only after config) =====
   if (hasCfg) {
     const { firebase, orgId: ORG_ID } = cfg;
 
-    // Firebase SDK (modular, CDN)
     const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
     const { getAuth, signInAnonymously, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
     const { getFirestore, doc, getDocs, updateDoc, collection, onSnapshot, writeBatch } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
@@ -232,8 +255,8 @@
     const db = getFirestore(app);
 
     const today = todayISO();
-    const dayCol = collection(db, "orgs", ORG_ID, "days", today, "tablets");
-    const dayDoc = (id) => doc(db, "orgs", ORG_ID, "days", today, "tablets", String(id));
+    const dayCol = collection(db, 'orgs', ORG_ID, 'days', today, 'tablets');
+    const dayDoc = (id) => doc(db, 'orgs', ORG_ID, 'days', today, 'tablets', String(id));
 
     let unsubscribe = null;
     let cache = new Map(); // id -> {status:'unused'|'purchased'|'maint'}
@@ -242,70 +265,86 @@
       const snap = await getDocs(dayCol);
       if (!snap.empty) return;
       const batch = writeBatch(db);
-      for (let n = RANGE_START; n <= RANGE_END; n++) { batch.set(dayDoc(n), { status: 'unused', updatedAt: Date.now() }); }
+      for (let n = RANGE_START; n <= RANGE_END; n++) {
+        batch.set(dayDoc(n), { status: 'unused', updatedAt: Date.now() });
+      }
       await batch.commit();
     }
 
     function recalcCounters() {
       let purchased = 0, maint = 0, unused = 0;
-      for (const [,v] of cache) { if (v.status === 'purchased') purchased++; else if (v.status === 'maint') maint++; else unused++; }
-      $('#countPurchased').textContent = purchased;
-      $('#countMaint').textContent = maint;
-      $('#countUnused').textContent = unused;
+      for (const [,v] of cache) {
+        if (v.status === 'purchased') purchased++;
+        else if (v.status === 'maint') maint++;
+        else unused++;
+      }
+      document.getElementById('countPurchased').textContent = purchased;
+      document.getElementById('countMaint').textContent = maint;
+      document.getElementById('countUnused').textContent = unused;
     }
 
-    function setActiveFilter(val) { $$('.seg button').forEach(b => b.classList.toggle('active', b.dataset.filter === val)); }
+    function setActiveFilter(val) {
+      $$('.seg button').forEach((b) => b.classList.toggle('active', b.dataset.filter === val));
+    }
 
     function render() {
-      const filter = ($('.seg button.active')?.dataset.filter) או 'all';
-      const search = $('#searchInput').value.trim().toLowerCase();
-      const container = $('#cards'); container.innerHTML = '';
+      const activeBtn = document.querySelector('.seg button.active');
+      const filter = (activeBtn ? activeBtn.dataset.filter : 'all');
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      const container = document.getElementById('cards');
+      container.innerHTML = '';
 
       const entries = [...cache.entries()].sort((a,b)=> Number(a[0]) - Number(b[0]));
 
       for (const [id, info] of entries) {
         if (info.status === 'maint') continue;
-        const pass = (filter === 'all') או (filter === 'purchased' && info.status === 'purchased') או (filter === 'not' && info.status === 'unused');
-        const match = !search || id.includes(search);
+        const pass = (filter === 'all') ||
+                     (filter === 'purchased' && info.status === 'purchased') ||
+                     (filter === 'not' && info.status === 'unused');
+        const match = !search || String(id).includes(search);
         if (!pass || !match) continue;
 
-        const cls = info.status === 'purchased' ? 'card-purchased' : 'card-unused';
-        const chip = info.status === 'purchased' ? `<span class="chip chip-green">נרכש</span>` : `<span class="chip chip-gray">לא נרכש</span>`;
+        const cls = (info.status === 'purchased') ? 'card-purchased' : 'card-unused';
+        const chip = (info.status === 'purchased')
+          ? '<span class=\"chip chip-green\">נרכש</span>'
+          : '<span class=\"chip chip-gray\">לא נרכש</span>';
 
         const card = document.createElement('div');
-        card.className = `rounded-2xl border p-3 ${cls}`;
+        card.className = 'rounded-2xl border p-3 ' + cls;
         card.innerHTML = `
-          <div class="flex items-center justify-between">
-            <div class="font-semibold text-lg">#${id}</div>
+          <div class=\"flex items-center justify-between\">
+            <div class=\"font-semibold text-lg\">#${id}</div>
             ${chip}
           </div>
-          <div class="mt-3 grid grid-cols-2 gap-2">
-            <button class="btn btn-lg btnStatus" data-id="${id}" data-next="purchased">סמן כנרכש</button>
-            <button class="btn btn-lg btnStatus" data-id="${id}" data-next="unused">סמן כלא</button>
+          <div class=\"mt-3 grid grid-cols-2 gap-2\">
+            <button class=\"btn btn-lg btnStatus\" data-id=\"${id}\" data-next=\"purchased\">סמן כנרכש</button>
+            <button class=\"btn btn-lg btnStatus\" data-id=\"${id}\" data-next=\"unused\">סמן כלא</button>
           </div>
         `;
         container.appendChild(card);
       }
 
-      container.querySelectorAll('.btnStatus').forEach(btn => {
+      container.querySelectorAll('.btnStatus').forEach((btn) => {
         btn.addEventListener('click', async (e) => {
           const id   = e.currentTarget.getAttribute('data-id');
           const next = e.currentTarget.getAttribute('data-next');
-          const current = cache.get(id)?.status || 'unused';
+          const current = (cache.get(id)?.status || 'unused');
           if (current === 'purchased' && next === 'unused') { openConfirm(id); return; }
-          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); } catch { alert('עדכון נכשל'); }
+          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); }
+          catch (err) { showError('עדכון נכשל'); }
         });
       });
     }
 
-    // אישור החזרה ל"לא"
+    // Confirm modal
     let confirmId = null;
-    function openConfirm(id){ confirmId = id; $('#confirmModal').classList.remove('hidden'); }
-    $('#confirmCancel').addEventListener('click', ()=>$('#confirmModal').classList.add('hidden'));
-    $('#confirmToUnused').addEventListener('click', async ()=>{
+    function openConfirm(id){ confirmId = id; document.getElementById('confirmModal').classList.remove('hidden'); }
+    document.getElementById('confirmCancel').addEventListener('click', ()=>document.getElementById('confirmModal').classList.add('hidden'));
+    document.getElementById('confirmToUnused').addEventListener('click', async ()=>{
       if (!confirmId) return;
-      try { await updateDoc(dayDoc(confirmId), { status:'unused', updatedAt: Date.now() }); } catch {}
-      $('#confirmModal').classList.add('hidden'); confirmId = null;
+      try { await updateDoc(dayDoc(confirmId), { status:'unused', updatedAt: Date.now() }); }
+      catch {}
+      document.getElementById('confirmModal').classList.add('hidden'); confirmId = null;
     });
 
     async function subscribe() {
@@ -314,104 +353,105 @@
       await ensureToday();
       unsubscribe = onSnapshot(dayCol, (snap) => {
         const map = new Map();
-        snap.forEach(docSnap => { const d = docSnap.data(); map.set(docSnap.id, { status: d.status או 'unused' }); });
+        snap.forEach((docSnap) => { const d = docSnap.data(); map.set(docSnap.id, { status: d.status || 'unused' }); });
         cache = map;
         statusEl.textContent = `מחובר — ${map.size} טאבלטים`;
         recalcCounters();
         render();
         showOnboardingOnce();
-      }, (err) => { console.error(err); statusEl.textContent = 'שגיאה: לא ניתן להתחבר.'; });
+      }, (err) => { console.error(err); statusEl.textContent = 'שגיאה: לא ניתן להתחבר.'; showError('שגיאת חיבור ל-Firestore'); });
     }
 
-    // ייצוא
+    // Export
     function exportCSV() {
       const t = new Date().toISOString().slice(0,10);
-      const rows = [["date","tablet","status"]];
+      const rows = [[\"date\",\"tablet\",\"status\"]];
       for (const [id, info] of [...cache.entries()].sort((a,b)=>Number(a[0])-Number(b[0]))) rows.push([t, id, info.status]);
-      const csv = rows.map(r => r.map(x => `"${String(x)}"`).join(",")).join("
-");
-      const blob = new Blob([csv], {type: "text/csv"});
+      const csv = rows.map(r => r.map(x => '\"' + String(x).replace(/\\\"/g,'\\\\\"') + '\"').join(',')).join('\n');
+      const blob = new Blob([csv], {type: 'text/csv'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href=url; a.download=`tablet-tracker-${t}.csv`; a.click();
       URL.revokeObjectURL(url);
     }
 
-    // איפוס יום (PIN)
+    // Reset (PIN)
     async function resetDay() {
       const pin = prompt('הכנס PIN:');
       if (pin !== RESET_PIN) { alert('PIN שגוי'); return; }
       if (!confirm('לאפס את היום לכל הטאבלטים?')) return;
       try {
         const snap = await getDocs(dayCol);
+        const { writeBatch } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
         const batch = writeBatch(db);
-        snap.forEach(d => batch.delete(d.ref));
+        snap.forEach((d) => batch.delete(d.ref));
         await batch.commit();
         await ensureToday();
         alert('האיפוס הושלם.');
-      } catch (e) { alert('האיפוס נכשל'); }
+      } catch (e) { showError('האיפוס נכשל'); }
     }
 
-    // תחזוקה
-    function openMaint(){ $('#maintModal').classList.remove('hidden'); $('#maintPinWrap').classList.remove('hidden'); $('#maintBody').classList.add('hidden'); }
-    function closeMaint(){ $('#maintModal').classList.add('hidden'); }
-    $('#maintClose').addEventListener('click', closeMaint);
-    $('#maintPinOk').addEventListener('click', () => {
-      const val = $('#maintPin').value.trim();
+    // Maintenance
+    function openMaint(){ document.getElementById('maintModal').classList.remove('hidden'); document.getElementById('maintPinWrap').classList.remove('hidden'); document.getElementById('maintBody').classList.add('hidden'); }
+    function closeMaint(){ document.getElementById('maintModal').classList.add('hidden'); }
+    document.getElementById('maintClose').addEventListener('click', closeMaint);
+    document.getElementById('maintPinOk').addEventListener('click', () => {
+      const val = document.getElementById('maintPin').value.trim();
       if (val !== RESET_PIN) { alert('PIN שגוי'); return; }
-      $('#maintPinWrap').classList.add('hidden');
-      $('#maintBody').classList.remove('hidden');
+      document.getElementById('maintPinWrap').classList.add('hidden');
+      document.getElementById('maintBody').classList.remove('hidden');
       renderMaint();
     });
 
     function renderMaint() {
-      const q = $('#maintSearch').value.trim().toLowerCase();
-      const cont = $('#maintCards'); cont.innerHTML='';
+      const q = document.getElementById('maintSearch').value.trim().toLowerCase();
+      const cont = document.getElementById('maintCards'); cont.innerHTML='';
       const entries = [...cache.entries()].sort((a,b)=>Number(a[0])-Number(b[0]));
       for (const [id, info] of entries) {
         if (q && !String(id).includes(q)) continue;
-        const cls = info.status === 'maint' ? 'card-maint' : 'card-unused';
+        const cls = (info.status === 'maint') ? 'card-maint' : 'card-unused';
         const card = document.createElement('div');
-        card.className = `rounded-2xl border p-3 ${cls}`;
+        card.className = 'rounded-2xl border p-3 ' + cls;
         card.innerHTML = `
-          <div class="flex items-center justify-between">
-            <div class="font-semibold">#${id}</div>
-            <button class="btn btn-sm btnMaintToggle" data-id="${id}">${info.status==='maint'?'הסר תחזוקה':'הכנס לתחזוקה'}</button>
+          <div class=\"flex items-center justify-between\">
+            <div class=\"font-semibold\">#${id}</div>
+            <button class=\"btn btn-sm btnMaintToggle\" data-id=\"${id}\">${info.status==='maint'?'הסר תחזוקה':'הכנס לתחזוקה'}</button>
           </div>
-          <div class="text-sm mt-1">${info.status==='maint'?'🛠 במצב תחזוקה':'—'}</div>
+          <div class=\"text-sm mt-1\">${info.status==='maint'?'🛠 במצב תחזוקה':'—'}</div>
         `;
         cont.appendChild(card);
       }
-      cont.querySelectorAll('.btnMaintToggle').forEach ב => {
-        ב.addEventListener('click', async (e)=>{
+      cont.querySelectorAll('.btnMaintToggle').forEach((b) => {
+        b.addEventListener('click', async (e)=>{
           const id = e.currentTarget.getAttribute('data-id');
-          const curr = cache.get(id)?.status או 'unused';
-          const next = curr === 'maint' ? 'unused' : 'maint';
-          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); } catch { alert('עדכון נכשל'); }
+          const curr = (cache.get(id)?.status || 'unused');
+          const next = (curr === 'maint') ? 'unused' : 'maint';
+          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); }
+          catch { showError('עדכון נכשל'); }
         });
       });
-      $('#maintSearch').oninput = renderMaint;
+      document.getElementById('maintSearch').oninput = renderMaint;
     }
 
-    // עזרה / היכרות מהירה
+    // Help / Onboarding
     function showOnboardingOnce(){
       if (localStorage.getItem(ONBOARD_KEY)) return;
       openHelp();
       localStorage.setItem(ONBOARD_KEY, '1');
     }
-    function openHelp(){ $('#helpModal').classList.remove('hidden'); }
-    function closeHelp(){ $('#helpModal').classList.add('hidden'); }
-    $('#btnHelp').addEventListener('click', openHelp);
-    $('#helpClose').addEventListener('click', closeHelp);
+    function openHelp(){ document.getElementById('helpModal').classList.remove('hidden'); }
+    function closeHelp(){ document.getElementById('helpModal').classList.add('hidden'); }
+    document.getElementById('btnHelp').addEventListener('click', openHelp);
+    document.getElementById('helpClose').addEventListener('click', closeHelp);
 
-    // קישורי UI
-    $$('.seg button').forEach(b => b.addEventListener('click', () => { setActiveFilter(b.dataset.filter); render(); }));
-    $('#searchInput').addEventListener('input', render);
-    $('#btnExport').addEventListener('click', exportCSV);
-    $('#btnReset').addEventListener('click', resetDay);
-    $('#btnMaint').addEventListener('click', openMaint);
-    $('#btnMaint2').addEventListener('click', openMaint);
+    // Bind UI
+    $$('.seg button').forEach((b) => b.addEventListener('click', () => { setActiveFilter(b.dataset.filter); render(); }));
+    document.getElementById('searchInput').addEventListener('input', render);
+    document.getElementById('btnExport').addEventListener('click', exportCSV);
+    document.getElementById('btnReset').addEventListener('click', resetDay);
+    document.getElementById('btnMaint').addEventListener('click', openMaint);
+    document.getElementById('btnMaint2').addEventListener('click', openMaint);
 
-    // התחברות והתחלה
+    // Auth + start
     onAuthStateChanged(auth, async (user) => {
       if (!user) { statusEl.textContent = 'מתחבר…'; await signInAnonymously(auth); return; }
       subscribe();
