@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="en" class="h-full">
+<html lang="he" dir="rtl" class="h-full">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Tablet Tracker — Realtime</title>
+  <title>מעקב טאבלטים — בזמן אמת</title>
   <meta name="theme-color" content="#146EFF">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html, body { height: 100%; font-size: 18px; -webkit-tap-highlight-color: transparent; }
-    .card-purchased { background-color: #d1fae5; }   /* green */
-    .card-unused    { background-color: #f3f4f6; }   /* gray  */
-    .card-maint     { background-color: #fef9c3; }   /* yellow */
+    .card-purchased { background-color: #d1fae5; }   /* ירוק */
+    .card-unused    { background-color: #f3f4f6; }   /* אפור  */
+    .card-maint     { background-color: #fef9c3; }   /* צהוב */
     .chip { border-radius: 9999px; padding: 2px 10px; font-size: 12px; }
     .chip-green { background:#10b981; color:white; }
     .chip-gray  { background:#e5e7eb; color:#111827; }
@@ -24,120 +24,120 @@
     .seg button { padding: 10px 12px; border:1px solid #e5e7eb; border-radius:12px; background:white; }
     .seg button.active { background:#2563eb; color:white; border-color:#2563eb; }
     .sticky-footer { position: sticky; bottom: 0; background: white; border-top: 1px solid #e5e7eb; padding: 10px; }
-    button, input, select { font-size: 18px; }
+    button, input, select, textarea { font-size: 18px; }
   </style>
 </head>
 <body class="bg-gray-50 h-full">
 <main class="max-w-3xl mx-auto p-4 pb-28" id="root">
 
-  <!-- SETUP (first run) -->
+  <!-- מסך הגדרות (פעם ראשונה) -->
   <section id="setup" class="hidden">
-    <h1 class="text-3xl font-bold text-center">Tablet Tracker — Setup</h1>
-    <p class="mt-2 text-gray-700 text-center">Paste Firebase config + Org ID. Only once per device.</p>
+    <h1 class="text-3xl font-bold text-center">מעקב טאבלטים — הגדרות</h1>
+    <p class="mt-2 text-gray-700 text-center">הדבק קונפיגורציית Firebase + מזהה צוות. פעולה חד‑פעמית למכשיר.</p>
     <div class="mt-4 grid gap-3">
       <label class="block">
-        <span class="text-sm text-gray-600">Firebase Web Config (JSON)</span>
+        <span class="text-sm text-gray-600">קובץ קונפיגורציה של Firebase (JSON)</span>
         <textarea id="cfgJson" class="mt-1 w-full border rounded-xl p-3" rows="8" placeholder='{"apiKey":"","authDomain":"","projectId":"","appId":""}'></textarea>
       </label>
       <label class="block">
-        <span class="text-sm text-gray-600">Org / Team ID</span>
+        <span class="text-sm text-gray-600">מזהה צוות / ארגון</span>
         <input id="orgId" class="mt-1 w-full border rounded-xl p-3" placeholder="my-shop" />
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <button id="btnSaveCfg" class="btn btn-lg btn-blue">Save & Start</button>
-        <button id="btnTestCfg" class="btn btn-lg btn-outline">Test Connection</button>
-        <button id="btnCopyInvite" class="btn btn-lg btn-outline">Copy Invite Link</button>
+        <button id="btnSaveCfg" class="btn btn-lg btn-blue">שמור והתחל</button>
+        <button id="btnTestCfg" class="btn btn-lg btn-outline">בדיקת חיבור</button>
+        <button id="btnCopyInvite" class="btn btn-lg btn-outline">העתק קישור הזמנה</button>
       </div>
       <p id="setupStatus" class="text-sm text-gray-600 mt-2"></p>
     </div>
   </section>
 
-  <!-- APP (after config) -->
+  <!-- אפליקציה (לאחר שמירה) -->
   <section id="app" class="hidden">
     <header class="sticky top-0 bg-gray-50/90 backdrop-blur z-10 pt-2 pb-3 mb-2">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-extrabold">Tablet Tracker</h1>
+        <h1 class="text-2xl font-extrabold">מעקב טאבלטים</h1>
         <div class="flex gap-2">
-          <button id="btnMaint" class="btn btn-sm">Maintenance</button>
-          <button id="btnReset" class="btn btn-sm btn-red">Reset Day</button>
+          <button id="btnMaint" class="btn btn-sm">מצב תחזוקה</button>
+          <button id="btnReset" class="btn btn-sm btn-red">איפוס יום</button>
         </div>
       </div>
 
-      <!-- Counters -->
+      <!-- מונים -->
       <div class="mt-3 grid grid-cols-3 gap-2 text-center">
         <div class="rounded-2xl border bg-white p-3">
-          <div class="text-sm text-gray-500">Purchased</div>
+          <div class="text-sm text-gray-500">נרכשו</div>
           <div id="countPurchased" class="text-2xl font-bold">0</div>
         </div>
         <div class="rounded-2xl border bg-white p-3">
-          <div class="text-sm text-gray-500">Not Purchased</div>
+          <div class="text-sm text-gray-500">לא נרכשו</div>
           <div id="countUnused" class="text-2xl font-bold">0</div>
         </div>
         <div class="rounded-2xl border bg-white p-3">
-          <div class="text-sm text-gray-500">Maintenance</div>
+          <div class="text-sm text-gray-500">תחזוקה</div>
           <div id="countMaint" class="text-2xl font-bold">0</div>
         </div>
       </div>
 
-      <!-- Segmented filter (maintenance excluded here) -->
+      <!-- מסנן מקוטע (תחזוקה לא מוצגת כאן) -->
       <div class="seg mt-3 grid grid-cols-3 gap-2">
-        <button data-filter="all"        class="active">All</button>
-        <button data-filter="not">Not</button>
-        <button data-filter="purchased">Purchased</button>
+        <button data-filter="all"        class="active">הכל</button>
+        <button data-filter="not">לא</button>
+        <button data-filter="purchased">נרכש</button>
       </div>
 
-      <input id="searchInput" placeholder="Search tablet #" class="mt-3 border rounded-xl px-3 py-3 w-full bg-white" />
-      <div class="mt-1 text-sm text-gray-600" id="status">Signing in…</div>
+      <input id="searchInput" placeholder="חיפוש מספר טאבלט" class="mt-3 border rounded-xl px-3 py-3 w-full bg-white" />
+      <div class="mt-1 text-sm text-gray-600" id="status">מתחבר…</div>
     </header>
 
-    <!-- Cards (maintenance hidden from main list) -->
+    <!-- כרטיסים (תחזוקה מוסתרת ברשימה הראשית) -->
     <section class="mt-4">
       <div id="cards" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
     </section>
 
-    <!-- Sticky bottom actions -->
+    <!-- פעולות תחתונות דביקות -->
     <div class="sticky-footer">
       <div class="grid grid-cols-2 gap-2">
-        <button id="btnExport" class="btn btn-lg btn-outline">Export CSV</button>
-        <button id="btnMaint2" class="btn btn-lg">Maintenance</button>
+        <button id="btnExport" class="btn btn-lg btn-outline">ייצוא CSV</button>
+        <button id="btnMaint2" class="btn btn-lg">מצב תחזוקה</button>
       </div>
     </div>
   </section>
 </main>
 
-<!-- Maintenance Modal (PIN-protected) -->
+<!-- חלון מצב תחזוקה (מוגן סיסמה) -->
 <div id="maintModal" class="hidden fixed inset-0 bg-black/40 z-20 flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl p-4 w-full max-w-md max-h-[85vh] overflow-auto">
     <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold">Maintenance Mode</h2>
-      <button id="maintClose" class="btn btn-sm">Close</button>
+      <h2 class="text-xl font-semibold">מצב תחזוקה</h2>
+      <button id="maintClose" class="btn btn-sm">סגור</button>
     </div>
     <div id="maintPinWrap" class="mt-3">
-      <input id="maintPin" inputmode="numeric" maxlength="4" placeholder="Enter PIN" class="w-full border rounded-xl px-3 py-3" />
-      <button id="maintPinOk" class="btn btn-lg btn-blue w-full mt-2">Enter</button>
-      <p class="text-sm text-gray-600 mt-1">PIN default: 4321</p>
+      <input id="maintPin" inputmode="numeric" maxlength="4" placeholder="הכנס קוד PIN" class="w-full border rounded-xl px-3 py-3" />
+      <button id="maintPinOk" class="btn btn-lg btn-blue w-full mt-2">כניסה</button>
+      <p class="text-sm text-gray-600 mt-1">ברירת מחדל: 4321</p>
     </div>
     <div id="maintBody" class="hidden mt-3">
-      <input id="maintSearch" placeholder="Search tablet #" class="border rounded-xl px-3 py-2 w-full" />
+      <input id="maintSearch" placeholder="חיפוש מספר טאבלט" class="border rounded-xl px-3 py-2 w-full" />
       <div id="maintCards" class="grid grid-cols-2 gap-2 mt-3"></div>
     </div>
   </div>
 </div>
 
-<!-- Confirm modal for changing away from Purchased -->
+<!-- החלון לאישור שינוי מ-נרכש ללא -->
 <div id="confirmModal" class="hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center">
   <div class="bg-white rounded-2xl p-4 w-80">
-    <h2 class="text-lg font-semibold">Change status from Purchased?</h2>
-    <p class="text-sm text-gray-600 mt-1">This prevents accidental un‑purchasing.</p>
+    <h2 class="text-lg font-semibold">להחזיר מ״נרכש״ ל״לא״?</h2>
+    <p class="text-sm text-gray-600 mt-1">מגן מפני שינוי בטעות.</p>
     <div class="mt-3 grid grid-cols-2 gap-2">
-      <button id="confirmToUnused" class="btn btn-lg">To Unused</button>
-      <button id="confirmCancel" class="btn btn-lg btn-outline">Cancel</button>
+      <button id="confirmToUnused" class="btn btn-lg">החזר ללא</button>
+      <button id="confirmCancel" class="btn btn-lg btn-outline">ביטול</button>
     </div>
   </div>
 </div>
 
 <script type="module">
-  /* ----------------------- Config & helpers ----------------------- */
+  /* ----------------------- קונפיג & עזרים ----------------------- */
   const STORAGE_KEY = 'tt-rt-config-v2';
   const RESET_PIN = '4321';
   const RANGE_START = 51, RANGE_END = 99;
@@ -153,7 +153,7 @@
   const loadCfg = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } };
   const todayISO = () => { const d=new Date(); const tz=d.getTimezoneOffset(); return new Date(d - tz*60000).toISOString().slice(0,10); };
 
-  /* Accept ?config= invite links */
+  /* קבלת קישור הזמנה עם ?config= */
   if (urlParams.get('config')) {
     const incoming = fromB64(urlParams.get('config'));
     if (incoming && incoming.firebase && incoming.orgId) {
@@ -167,34 +167,34 @@
   $('#setup').classList.toggle('hidden', hasCfg);
   $('#app').classList.toggle('hidden', !hasCfg);
 
-  /* ---------------------------- Setup ---------------------------- */
+  /* ---------------------------- מסך הגדרות ---------------------------- */
   if (!hasCfg) {
     $('#btnSaveCfg').addEventListener('click', () => {
-      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='Invalid JSON'; return; }
+      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='JSON לא תקין'; return; }
       const orgId = $('#orgId').value.trim() || 'default-org';
       saveCfg({ firebase: firebaseCfg, orgId });
       location.reload();
     });
     $('#btnTestCfg').addEventListener('click', async () => {
-      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='Invalid JSON'; return; }
-      $('#setupStatus').textContent='Testing…';
+      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='JSON לא תקין'; return; }
+      $('#setupStatus').textContent='בודק חיבור…';
       try {
         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
         const { getAuth, signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
         const app = initializeApp(firebaseCfg); const auth = getAuth(app);
         await signInAnonymously(auth);
-        $('#setupStatus').textContent='Success! Save & Start.';
-      } catch (e) { console.error(e); $('#setupStatus').textContent='Failed to connect. Check config.'; }
+        $('#setupStatus').textContent='הצלחה! שמור והתחל.';
+      } catch (e) { console.error(e); $('#setupStatus').textContent='נכשל. בדוק את ההגדרות.'; }
     });
     $('#btnCopyInvite').addEventListener('click', () => {
-      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { alert('Invalid JSON'); return; }
+      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { alert('JSON לא תקין'); return; }
       const orgId = $('#orgId').value.trim() || 'default-org';
       const url = location.origin + location.pathname + '?config=' + b64({ firebase: firebaseCfg, orgId });
-      navigator.clipboard.writeText(url).then(()=> alert('Invite link copied!'));
+      navigator.clipboard.writeText(url).then(()=> alert('קישור הועתק!'));
     });
   }
 
-  /* ------------------------------ App ---------------------------- */
+  /* ------------------------------ אפליקציה ------------------------------ */
   if (hasCfg) {
     const { firebase, orgId: ORG_ID } = cfg;
 
@@ -236,7 +236,7 @@
       }
       $('#countPurchased').textContent = purchased;
       $('#countMaint').textContent = maint;
-      $('#countUnused').textContent = unused; // Not Purchased excludes maintenance
+      $('#countUnused').textContent = unused;
     }
 
     function setActiveFilter(val) {
@@ -251,7 +251,7 @@
       const entries = [...cache.entries()].sort((a,b)=> Number(a[0]) - Number(b[0]));
 
       for (const [id, info] of entries) {
-        if (info.status === 'maint') continue; // hidden from main list
+        if (info.status === 'maint') continue; // לא מציגים תחזוקה ברשימה הראשית
         const pass = (filter === 'all') ||
                      (filter === 'purchased' && info.status === 'purchased') ||
                      (filter === 'not' && info.status === 'unused');
@@ -260,8 +260,8 @@
 
         const cls = info.status === 'purchased' ? 'card-purchased' : 'card-unused';
         const chip = info.status === 'purchased'
-          ? `<span class="chip chip-green">Purchased</span>`
-          : `<span class="chip chip-gray">Not purchased</span>`;
+          ? `<span class="chip chip-green">נרכש</span>`
+          : `<span class="chip chip-gray">לא נרכש</span>`;
 
         const card = document.createElement('div');
         card.className = `rounded-2xl border p-3 ${cls}`;
@@ -271,29 +271,27 @@
             ${chip}
           </div>
           <div class="mt-3 grid grid-cols-2 gap-2">
-            <button class="btn btn-lg btnStatus" data-id="${id}" data-next="purchased">Mark Purchased</button>
-            <button class="btn btn-lg btnStatus" data-id="${id}" data-next="unused">Mark Not</button>
+            <button class="btn btn-lg btnStatus" data-id="${id}" data-next="purchased">סמן כנרכש</button>
+            <button class="btn btn-lg btnStatus" data-id="${id}" data-next="unused">סמן כלא</button>
           </div>
         `;
         container.appendChild(card);
       }
 
-      // Safer un-purchase
+      // הגנה משינוי בטעות
       container.querySelectorAll('.btnStatus').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const id   = e.currentTarget.getAttribute('data-id');
           const next = e.currentTarget.getAttribute('data-next');
           const current = cache.get(id)?.status || 'unused';
-          if (current === 'purchased' && next === 'unused') {
-            openConfirm(id); return;
-          }
+          if (current === 'purchased' && next === 'unused') { openConfirm(id); return; }
           try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); }
-          catch { alert('Update failed'); }
+          catch { alert('עדכון נכשל'); }
         });
       });
     }
 
-    // Confirm modal logic
+    // חלון אישור
     let confirmId = null;
     function openConfirm(id){ confirmId = id; $('#confirmModal').classList.remove('hidden'); }
     $('#confirmCancel').addEventListener('click', ()=>$('#confirmModal').classList.add('hidden'));
@@ -305,37 +303,38 @@
 
     async function subscribe() {
       if (unsubscribe) unsubscribe();
-      statusEl.textContent = 'Loading today…';
+      statusEl.textContent = 'טוען את היום…';
       await ensureToday();
       unsubscribe = onSnapshot(dayCol, (snap) => {
         const map = new Map();
         snap.forEach(docSnap => { const d = docSnap.data(); map.set(docSnap.id, { status: d.status || 'unused' }); });
         cache = map;
-        statusEl.textContent = `Live — ${map.size} tablets`;
+        statusEl.textContent = `מחובר — ${map.size} טאבלטים`;
         recalcCounters();
         render();
-      }, (err) => { console.error(err); statusEl.textContent = 'Error: cannot subscribe.'; });
+      }, (err) => { console.error(err); statusEl.textContent = 'שגיאה: לא ניתן להתחבר.'; });
     }
 
-    // Export CSV
+    // ייצוא
     function exportCSV() {
       const t = new Date().toISOString().slice(0,10);
       const rows = [["date","tablet","status"]];
       for (const [id, info] of [...cache.entries()].sort((a,b)=>Number(a[0])-Number(b[0]))) {
         rows.push([t, id, info.status]);
       }
-      const csv = rows.map(r => r.map(x => `"${String(x)}"`).join(",")).join("\n");
+      const csv = rows.map(r => r.map(x => `"${String(x)}"`).join(",")).join("
+");
       const blob = new Blob([csv], {type: "text/csv"});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href=url; a.download=`tablet-tracker-${t}.csv`; a.click();
       URL.revokeObjectURL(url);
     }
 
-    // Reset day (PIN)
+    // איפוס יום (סיסמה)
     async function resetDay() {
-      const pin = prompt('Enter PIN:');
-      if (pin !== RESET_PIN) { alert('Incorrect PIN'); return; }
-      if (!confirm('Reset today for all tablets?')) return;
+      const pin = prompt('הכנס PIN:');
+      if (pin !== RESET_PIN) { alert('PIN שגוי'); return; }
+      if (!confirm('לאפס את היום לכל הטאבלטים?')) return;
       try {
         const snap = await getDocs(dayCol);
         const { writeBatch } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
@@ -343,17 +342,17 @@
         snap.forEach(d => batch.delete(d.ref));
         await batch.commit();
         await ensureToday();
-        alert('Reset complete.');
-      } catch (e) { alert('Reset failed'); }
+        alert('האיפוס הושלם.');
+      } catch (e) { alert('האיפוס נכשל'); }
     }
 
-    // Maintenance modal
+    // מודל תחזוקה
     function openMaint(){ $('#maintModal').classList.remove('hidden'); $('#maintPinWrap').classList.remove('hidden'); $('#maintBody').classList.add('hidden'); }
     function closeMaint(){ $('#maintModal').classList.add('hidden'); }
     $('#maintClose').addEventListener('click', closeMaint);
     $('#maintPinOk').addEventListener('click', () => {
       const val = $('#maintPin').value.trim();
-      if (val !== RESET_PIN) { alert('Wrong PIN'); return; }
+      if (val !== RESET_PIN) { alert('PIN שגוי'); return; }
       $('#maintPinWrap').classList.add('hidden');
       $('#maintBody').classList.remove('hidden');
       renderMaint();
@@ -371,9 +370,9 @@
         card.innerHTML = `
           <div class="flex items-center justify-between">
             <div class="font-semibold">#${id}</div>
-            <button class="btn btn-sm btnMaintToggle" data-id="${id}">${info.status==='maint'?'Remove':'Set'} Maint</button>
+            <button class="btn btn-sm btnMaintToggle" data-id="${id}">${info.status==='maint'?'הסר תחזוקה':'הכנס לתחזוקה'}</button>
           </div>
-          <div class="text-sm mt-1">${info.status==='maint'?'🛠 In maintenance':'—'}</div>
+          <div class="text-sm mt-1">${info.status==='maint'?'🛠 במצב תחזוקה':'—'}</div>
         `;
         cont.appendChild(card);
       }
@@ -382,13 +381,13 @@
           const id = e.currentTarget.getAttribute('data-id');
           const curr = cache.get(id)?.status || 'unused';
           const next = curr === 'maint' ? 'unused' : 'maint';
-          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); } catch { alert('Update failed'); }
+          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); } catch { alert('עדכון נכשל'); }
         });
       });
       $('#maintSearch').oninput = renderMaint;
     }
 
-    // Bind UI
+    // קישורי UI
     $$('.seg button').forEach(b => b.addEventListener('click', () => { setActiveFilter(b.dataset.filter); render(); }));
     $('#searchInput').addEventListener('input', render);
     $('#btnExport').addEventListener('click', exportCSV);
@@ -396,9 +395,9 @@
     $('#btnMaint').addEventListener('click', openMaint);
     $('#btnMaint2').addEventListener('click', openMaint);
 
-    // Auth + start
+    // התחברות והתחלה
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { statusEl.textContent = 'Signing in…'; await signInAnonymously(auth); return; }
+      if (!user) { statusEl.textContent = 'מתחבר…'; await signInAnonymously(auth); return; }
       subscribe();
     });
   }
