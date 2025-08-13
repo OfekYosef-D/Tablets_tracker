@@ -1,254 +1,318 @@
 <!doctype html>
 <html lang="en" class="h-full">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Tablet Tracker</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Tablet Tracker — Realtime</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#146EFF">
   <link rel="apple-touch-icon" href="icon-192.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    html, body { height: 100%; }
-    .card-used { opacity: 0.6; }
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    input[type=number] { -moz-appearance:textfield; }
+    html, body { height: 100%; font-size: 18px; }
+    .card-purchased { background-color: #d1fae5; }   /* green */
+    .card-unused { background-color: #f3f4f6; }      /* gray */
+    .card-maint { background-color: #fef9c3; }       /* yellow */
+    button, input, select { font-size: 18px; }
   </style>
 </head>
 <body class="bg-gray-50 h-full">
-  <main class="max-w-3xl mx-auto p-4 pb-24">
+<main class="max-w-3xl mx-auto p-4 pb-24" id="root">
+
+  <!-- SETUP (first run) -->
+  <section id="setup" class="hidden">
+    <h1 class="text-3xl font-bold text-center">Tablet Tracker — Setup</h1>
+    <p class="mt-2 text-gray-700 text-center">Paste Firebase config + Org ID. Only once per device.</p>
+    <div class="mt-4 grid gap-3">
+      <label class="block">
+        <span class="text-sm text-gray-600">Firebase Web Config (JSON)</span>
+        <textarea id="cfgJson" class="mt-1 w-full border rounded-xl p-3" rows="8" placeholder='{"apiKey":"","authDomain":"","projectId":"","appId":""}'></textarea>
+      </label>
+      <label class="block">
+        <span class="text-sm text-gray-600">Org / Team ID</span>
+        <input id="orgId" class="mt-1 w-full border rounded-xl p-3" placeholder="my-shop" />
+      </label>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <button id="btnSaveCfg" class="bg-blue-600 text-white rounded-xl py-3">Save & Start</button>
+        <button id="btnTestCfg" class="bg-white border rounded-xl py-3">Test Connection</button>
+        <button id="btnCopyInvite" class="bg-white border rounded-xl py-3">Copy Invite Link</button>
+      </div>
+      <p id="setupStatus" class="text-sm text-gray-600 mt-2"></p>
+    </div>
+  </section>
+
+  <!-- APP (after config) -->
+  <section id="app" class="hidden">
     <header class="sticky top-0 bg-gray-50/90 backdrop-blur z-10 pt-2 pb-3 mb-2">
-      <h1 class="text-2xl font-bold tracking-tight">Tablet Tracker</h1>
-      <p class="text-sm text-gray-600">Filter by purchase status per date. Works offline & installable.</p>
-      <div class="mt-3 grid grid-cols-2 gap-2">
-        <input id="datePicker" type="date" class="border rounded-xl px-3 py-2 w-full" />
-        <div class="flex gap-2 justify-end">
-          <button id="btnResetDay" class="px-3 py-2 rounded-xl border bg-white">Reset day</button>
-          <button id="btnExport" class="px-3 py-2 rounded-xl border bg-white">Export CSV</button>
+      <h1 class="text-3xl font-bold text-center">Tablet Tracker</h1>
+
+      <!-- Counters -->
+      <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div class="rounded-2xl border bg-white p-3">
+          <div class="text-sm text-gray-500">Purchased</div>
+          <div id="countPurchased" class="text-2xl font-bold">0</div>
+        </div>
+        <div class="rounded-2xl border bg-white p-3">
+          <div class="text-sm text-gray-500">Not Purchased</div>
+          <div id="countUnused" class="text-2xl font-bold">0</div>
+        </div>
+        <div class="rounded-2xl border bg-white p-3">
+          <div class="text-sm text-gray-500">Maintenance</div>
+          <div id="countMaint" class="text-2xl font-bold">0</div>
         </div>
       </div>
-      <div class="mt-3 grid grid-cols-1 sm:grid-cols-6 gap-2">
-        <div class="sm:col-span-2 flex items-center border rounded-xl bg-white px-3">
-          <span class="text-sm text-gray-500 mr-2">Range</span>
-          <input id="rangeStart" type="number" class="w-16 px-2 py-1 border rounded-lg" />
-          <span class="mx-1 text-gray-400">to</span>
-          <input id="rangeEnd" type="number" class="w-16 px-2 py-1 border rounded-lg" />
-          <button id="btnApplyRange" class="ml-2 px-3 py-1 rounded-lg border text-sm">Apply</button>
-        </div>
-        <input id="searchInput" placeholder="Search tablet # or customer" class="sm:col-span-2 border rounded-xl px-3 py-2 bg-white" />
-        <select id="filterSelect" class="sm:col-span-2 border rounded-xl px-3 py-2 bg-white">
+
+      <div class="mt-4 grid grid-cols-1 gap-3">
+        <select id="filterSelect" class="border rounded-xl px-3 py-2 w-full">
           <option value="all">Show: All</option>
           <option value="purchased">Show: Purchased</option>
           <option value="not">Show: Not purchased</option>
+          <option value="maint">Show: Maintenance</option>
         </select>
-      </div>
-      <div class="mt-3">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-700"><span id="usedCount">0</span>/<span id="totalCount">0</span> purchased</div>
-          <div id="allUsedBadge" class="hidden text-xs px-2 py-1 rounded-full bg-green-600 text-white">All tablets purchased 🎉</div>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-          <div id="progressBar" class="bg-blue-600 h-2 rounded-full" style="width:0%"></div>
+        <input id="searchInput" placeholder="Search tablet # or customer" class="border rounded-xl px-3 py-2 w-full" />
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btnExport" class="bg-white border py-2 px-4 rounded-xl">Export CSV</button>
+          <button id="btnReset" class="bg-red-600 text-white py-2 px-4 rounded-xl">Reset Today</button>
         </div>
       </div>
+      <div class="mt-3 text-sm text-gray-600" id="status">Connecting…</div>
     </header>
 
-    <section>
-      <div id="cards" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2"></div>
+    <section class="mt-4">
+      <div id="cards" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
     </section>
+  </section>
+</main>
 
-    <footer class="fixed bottom-0 inset-x-0 bg-white border-t p-3">
-      <div class="max-w-3xl mx-auto flex gap-2">
-        <button id="btnInstall" class="flex-1 px-3 py-3 rounded-xl border bg-white">Install (Add to Home)</button>
-        <button id="btnBackup" class="flex-1 px-3 py-3 rounded-xl border bg-white">Backup JSON</button>
-        <button id="btnRestore" class="flex-1 px-3 py-3 rounded-xl border bg-white">Restore</button>
-        <input id="restoreFile" type="file" accept="application/json" class="hidden">
-      </div>
-    </footer>
-  </main>
+<script type="module">
+  // ---------- Config store (no edits needed) ----------
+  const STORAGE_KEY = 'tt-rt-config-v1';
+  const RESET_PIN = '4321';           // single password for Reset
+  const RANGE_START = 51;             // hardcoded
+  const RANGE_END = 99;
 
-<script>
-const $ = sel => document.querySelector(sel);
-const $$ = sel => Array.from(document.querySelectorAll(sel));
-const STORAGE_KEY = 'tablet-tracker-v2';
-let state = loadState();
-let deferredPrompt = null;
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const statusEl = $('#status');
 
-if (!state.range) state.range = { start: 51, end: 99 };
-if (!state.days) state.days = {};
+  const urlParams = new URLSearchParams(location.search);
+  const b64 = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+  const fromB64 = (s) => { try { return JSON.parse(decodeURIComponent(escape(atob(s)))); } catch { return null; } };
+  function saveCfg(cfg){ localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); }
+  function loadCfg(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } }
+  function todayISO(){ const d=new Date(); const tz=d.getTimezoneOffset(); return new Date(d - tz*60000).toISOString().slice(0,10); }
 
-function todayISO() {
-  const d = new Date();
-  const tzOffset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - tzOffset*60000);
-  return local.toISOString().slice(0,10);
-}
-
-function loadState() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-  catch { return {}; }
-}
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function ensureDay(date) {
-  if (!state.days[date]) {
-    const dayData = {};
-    for (let n = state.range.start; n <= state.range.end; n++) {
-      dayData[String(n)] = { used: false, customer: "" };
+  // If invite link
+  if (urlParams.get('config')) {
+    const incoming = fromB64(urlParams.get('config'));
+    if (incoming && incoming.firebase && incoming.orgId) {
+      saveCfg(incoming);
+      history.replaceState({}, '', location.pathname);
     }
-    state.days[date] = dayData;
   }
-}
-function setRange(start, end) {
-  state.range = { start, end };
-  Object.keys(state.days).forEach(date => {
-    const day = state.days[date];
-    for (let n = start; n <= end; n++) {
-      const k = String(n);
-      if (!day[k]) day[k] = { used:false, customer:"" };
+
+  const cfg = loadCfg();
+  const hasCfg = !!cfg.firebase;
+  $('#setup').classList.toggle('hidden', hasCfg);
+  $('#app').classList.toggle('hidden', !hasCfg);
+
+  // ---------- Setup actions ----------
+  if (!hasCfg) {
+    $('#btnSaveCfg').addEventListener('click', () => {
+      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='Invalid JSON'; return; }
+      const orgId = $('#orgId').value.trim() || 'default-org';
+      saveCfg({ firebase: firebaseCfg, orgId });
+      location.reload();
+    });
+    $('#btnTestCfg').addEventListener('click', async () => {
+      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='Invalid JSON'; return; }
+      $('#setupStatus').textContent='Testing…';
+      try {
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
+        const { getAuth, signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
+        const app = initializeApp(firebaseCfg); const auth = getAuth(app);
+        await signInAnonymously(auth);
+        $('#setupStatus').textContent='Success! Save & Start.';
+      } catch (e) { console.error(e); $('#setupStatus').textContent='Failed to connect. Check config.'; }
+    });
+    $('#btnCopyInvite').addEventListener('click', () => {
+      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { alert('Invalid JSON'); return; }
+      const orgId = $('#orgId').value.trim() || 'default-org';
+      const url = location.origin + location.pathname + '?config=' + b64({ firebase: firebaseCfg, orgId });
+      navigator.clipboard.writeText(url).then(()=> alert('Invite link copied!'));
+    });
+  }
+
+  // ---------- App logic ----------
+  if (hasCfg) {
+    const { firebase, orgId: ORG_ID } = cfg;
+
+    // Firebase imports
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
+    const { getAuth, signInAnonymously, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
+    const {
+      getFirestore, doc, setDoc, getDocs, updateDoc, collection,
+      onSnapshot, writeBatch, deleteDoc, query
+    } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+
+    const app = initializeApp(firebase);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const today = todayISO();
+    const dayCol = collection(db, "orgs", ORG_ID, "days", today, "tablets");
+    const dayDoc = (id) => doc(db, "orgs", ORG_ID, "days", today, "tablets", String(id));
+
+    let unsubscribe = null;
+    let cache = new Map(); // id -> {status:'unused'|'purchased'|'maint', customer:''}
+
+    async function ensureToday() {
+      const snap = await getDocs(dayCol);
+      if (!snap.empty) return;
+      const batch = writeBatch(db);
+      for (let n = RANGE_START; n <= RANGE_END; n++) {
+        batch.set(dayDoc(n), { status: 'unused', customer: '', updatedAt: Date.now() });
+      }
+      await batch.commit();
     }
-    Object.keys(day).forEach(k => {
-      const num = Number(k);
-      if (num < start || num > end) delete day[k];
-    });
-  });
-  saveState();
-}
 
-function render(date) {
-  ensureDay(date);
-  $('#datePicker').value = date;
-  $('#rangeStart').value = state.range.start;
-  $('#rangeEnd').value = state.range.end;
-
-  const q = $('#searchInput').value.trim().toLowerCase();
-  const filter = $('#filterSelect').value || 'all';
-  const day = state.days[date];
-  const entries = Object.entries(day).sort((a,b)=>Number(a[0])-Number(b[0]));
-
-  const container = $('#cards');
-  container.innerHTML = '';
-  entries.forEach(([id, info]) => {
-    let passFilter = true;
-    if (filter === 'purchased') passFilter = !!info.used;
-    else if (filter === 'not') passFilter = !info.used;
-    const match = (!q || id.includes(q) || (info.customer && info.customer.toLowerCase().includes(q))) && passFilter;
-    if (!match) return;
-    const card = document.createElement('div');
-    card.className = `rounded-2xl border bg-white p-3 ${info.used ? 'card-used' : ''}`;
-    card.innerHTML = `
-      <div class="flex items-center justify-between">
-        <div class="font-semibold">#${id}</div>
-        <label class="flex items-center gap-2 text-sm">
-          <input type="checkbox" ${info.used ? 'checked' : ''} data-id="${id}" class="h-5 w-5">
-          <span>${info.used ? 'Purchased' : 'Not purchased'}</span>
-        </label>
-      </div>
-      <input placeholder="Customer name" value="${info.customer || ''}" data-id="${id}" class="mt-2 w-full border rounded-xl px-3 py-2" />
-    `;
-    container.appendChild(card);
-  });
-
-  const fullTotal = Object.keys(day).length;
-  const purchasedCount = Object.values(day).filter(x=>x.used).length;
-  $('#usedCount').textContent = purchasedCount;
-  $('#totalCount').textContent = fullTotal;
-  const pct = fullTotal ? Math.round(100*purchasedCount/fullTotal) : 0;
-  $('#progressBar').style.width = pct + '%';
-  $('#allUsedBadge').classList.toggle('hidden', purchasedCount !== fullTotal);
-
-  $$('#cards input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', (e) => {
-      const id = e.target.getAttribute('data-id');
-      state.days[date][id].used = e.target.checked;
-      saveState();
-      render(date);
-    });
-  });
-  $$('#cards input[type="text"], #cards input:not([type])').forEach(inp => {
-    inp.addEventListener('input', (e) => {
-      const id = e.target.getAttribute('data-id');
-      state.days[date][id].customer = e.target.value;
-      saveState();
-    });
-  });
-}
-
-$('#btnApplyRange').addEventListener('click', () => {
-  const s = Number($('#rangeStart').value);
-  const e = Number($('#rangeEnd').value);
-  if (Number.isFinite(s) && Number.isFinite(e) && s <= e) {
-    setRange(s, e);
-    render($('#datePicker').value || todayISO());
-  } else {
-    alert('Invalid range');
-  }
-});
-$('#btnResetDay').addEventListener('click', () => {
-  const date = $('#datePicker').value || todayISO();
-  if (confirm(`Reset ${date}? Marks and names will be cleared.`)) {
-    const start = state.range.start, end = state.range.end;
-    state.days[date] = {};
-    for (let n = start; n <= end; n++) state.days[date][String(n)] = { used:false, customer:"" };
-    saveState();
-    render(date);
-  }
-});
-$('#btnExport').addEventListener('click', () => {
-  const date = $('#datePicker').value || todayISO();
-  const day = state.days[date] || {};
-  const rows = [["date","tablet","purchased","customer"]];
-  Object.entries(day).forEach(([id,info]) => rows.push([date, id, info.used ? "1" : "0", (info.customer||"").replace(/"/g, '""')]));
-  const csv = rows.map(r => r.map(x => `"${String(x)}"`).join(",")).join("\n");
-  const blob = new Blob([csv], {type: "text/csv"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `tablet-tracker-${date}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
-$('#btnBackup').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(state, null, 2)], {type: "application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `tablet-tracker-backup.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
-$('#btnRestore').addEventListener('click', () => $('#restoreFile').click());
-$('#restoreFile').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const data = JSON.parse(reader.result);
-      state = data;
-      saveState();
-      render($('#datePicker').value || todayISO());
-      alert('Restore complete');
-    } catch (err) {
-      alert('Invalid JSON');
+    function recalcCounters() {
+      let purchased = 0, maint = 0, unused = 0;
+      for (const [,v] of cache) {
+        if (v.status === 'purchased') purchased++;
+        else if (v.status === 'maint') maint++;
+        else unused++;
+      }
+      // Exclude maintenance from not-purchased shown count (unused only)
+      $('#countPurchased').textContent = purchased;
+      $('#countMaint').textContent = maint;
+      $('#countUnused').textContent = unused;
     }
-  };
-  reader.readAsText(file);
-});
-$('#searchInput').addEventListener('input', () => render($('#datePicker').value || todayISO()));
-$('#filterSelect').addEventListener('change', () => render($('#datePicker').value || todayISO()));
-$('#datePicker').addEventListener('change', () => render($('#datePicker').value));
-window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
-$('#btnInstall').addEventListener('click', async () => {
-  if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; }
-  else { alert('Use your browser menu: Add to Home Screen.'); }
-});
-window.addEventListener('load', () => {
-  const d = todayISO();
-  $('#datePicker').value = d;
-  render(d);
-  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
-});
+
+    function render() {
+      const filter = $('#filterSelect').value;
+      const search = $('#searchInput').value.trim().toLowerCase();
+      const container = $('#cards'); container.innerHTML = '';
+
+      const entries = [...cache.entries()].sort((a,b)=>{
+        // maintenance should be at bottom always
+        const va = a[1].status === 'maint' ? 1 : 0;
+        const vb = b[1].status === 'maint' ? 1 : 0;
+        if (va !== vb) return va - vb;
+        return Number(a[0]) - Number(b[0]);
+      });
+
+      for (const [id, info] of entries) {
+        const pass = (filter === 'all') ||
+                     (filter === 'purchased' && info.status === 'purchased') ||
+                     (filter === 'not' && info.status === 'unused') ||
+                     (filter === 'maint' && info.status === 'maint');
+        const match = !search || id.includes(search) ||
+                      (info.customer && info.customer.toLowerCase().includes(search));
+        if (!pass || !match) continue;
+
+        const cls = info.status === 'purchased' ? 'card-purchased' : (info.status === 'maint' ? 'card-maint' : 'card-unused');
+        const card = document.createElement('div');
+        card.className = `rounded-xl p-3 ${cls}`;
+        card.innerHTML = `
+          <div class="flex justify-between items-center">
+            <strong>#${id}</strong>
+            <div class="flex gap-2">
+              <button class="btnStat px-2 py-1 rounded-lg border bg-white" data-id="${id}" data-next="unused">Unused</button>
+              <button class="btnStat px-2 py-1 rounded-lg border bg-white" data-id="${id}" data-next="purchased">Purchased</button>
+              <button class="btnStat px-2 py-1 rounded-lg border bg-white" data-id="${id}" data-next="maint">🛠</button>
+            </div>
+          </div>
+          <input placeholder="Customer" value="${info.customer || ''}" data-id="${id}" class="mt-2 w-full border rounded px-2 py-2" />
+        `;
+        container.appendChild(card);
+      }
+
+      // Bind status buttons
+      container.querySelectorAll('.btnStat').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.getAttribute('data-id');
+          const next = e.target.getAttribute('data-next');
+          try {
+            await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() });
+          } catch (e) { alert('Update failed'); }
+        });
+      });
+
+      // Bind customer inputs (debounced)
+      container.querySelectorAll('input[placeholder="Customer"]').forEach(inp => {
+        let t; inp.addEventListener('input', (e) => {
+          clearTimeout(t);
+          const id = e.target.getAttribute('data-id');
+          const val = e.target.value;
+          t = setTimeout(async () => {
+            try { await updateDoc(dayDoc(id), { customer: val, updatedAt: Date.now() }); }
+            catch { /* ignore */ }
+          }, 250);
+        });
+      });
+    }
+
+    async function subscribe() {
+      if (unsubscribe) unsubscribe();
+      statusEl.textContent = 'Loading today…';
+      await ensureToday();
+      unsubscribe = onSnapshot(dayCol, (snap) => {
+        const map = new Map();
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          map.set(docSnap.id, { status: d.status || 'unused', customer: d.customer || '' });
+        });
+        cache = map;
+        statusEl.textContent = `Live — ${map.size} tablets`;
+        recalcCounters();
+        render();
+      }, (err) => { console.error(err); statusEl.textContent = 'Error: cannot subscribe.'; });
+    }
+
+    // Export CSV
+    function exportCSV() {
+      const today = new Date().toISOString().slice(0,10);
+      const rows = [["date","tablet","status","customer"]];
+      for (const [id, info] of [...cache.entries()].sort((a,b)=>Number(a[0])-Number(b[0]))) {
+        rows.push([today, id, info.status, (info.customer || "").replace(/"/g,'""')]);
+      }
+      const csv = rows.map(r => r.map(x => `"${String(x)}"`).join(",")).join("\n");
+      const blob = new Blob([csv], {type: "text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download=`tablet-tracker-${today}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Reset today (PIN)
+    async function resetToday() {
+      const pin = prompt('Enter PIN:');
+      if (pin !== RESET_PIN) { alert('Incorrect PIN'); return; }
+      if (!confirm('Reset today for all tablets?')) return;
+      try {
+        const snap = await getDocs(dayCol);
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        await ensureToday();
+        alert('Reset complete.');
+      } catch (e) { alert('Reset failed'); }
+    }
+
+    // UI bindings
+    $('#filterSelect').addEventListener('change', render);
+    $('#searchInput').addEventListener('input', render);
+    $('#btnExport').addEventListener('click', exportCSV);
+    $('#btnReset').addEventListener('click', resetToday);
+
+    // Auth + start
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { statusEl.textContent = 'Signing in…'; await signInAnonymously(auth); return; }
+      subscribe();
+    });
+
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+  }
 </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'tablet-tracker-v2';
+const CACHE_NAME = 'tablet-tracker-rt-v1';
 const URLS_TO_CACHE = [
   './',
   './index.html',

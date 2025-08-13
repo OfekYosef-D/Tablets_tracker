@@ -1,7 +1,7 @@
 {
-  "name": "Tablet Tracker",
+  "name": "Tablet Tracker — Realtime",
   "short_name": "Tracker",
-  "description": "Filter purchased / not purchased per date. Mobile-first, offline-ready.",
+  "description": "Realtime, today-only tablet tracker with maintenance state and PIN reset.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",

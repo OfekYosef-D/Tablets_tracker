@@ -1,12 +1,24 @@
-Tablet Tracker (PWA) — Filter Build
-===================================
-Files:
-- index.html
-- sw.js
-- manifest.webmanifest
-- icon-192.png
-- icon-512.png
+Tablet Tracker — Realtime Today-Only
+==================================
+Upload these files to any static host (Cloudflare Pages Upload, Replit Static HTML, Netlify, Vercel).
+On first run, paste your Firebase Web App config and an Org ID. That’s it.
 
-Deploy anywhere (Netlify Drop, Replit Static HTML, Vercel, Cloudflare Pages). Open the live URL on your phone and Add to Home Screen.
+What it does:
+- Hardcoded tablets 51–99
+- Status: unused / purchased / maintenance (maintenance excluded from totals and sorted to bottom)
+- Big counters (Purchased / Not Purchased / Maintenance)
+- Filter + search, customer field
+- Realtime sync via Firestore
+- Today-only (resets by PIN button)
+- PIN for reset: 4321 (change in code if you want)
 
-To force an update later, bump CACHE_NAME in sw.js (e.g., v3) and redeploy.
+Firestore Rules (starter):
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /orgs/{orgId}/days/{day}/tablets/{tabletId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+Enable Firestore and Anonymous Auth in Firebase.
