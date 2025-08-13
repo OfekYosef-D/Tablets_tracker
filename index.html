@@ -1,127 +1,407 @@
 <!doctype html>
 <html lang="en" class="h-full">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Tablet Tracker — Friendly Mode</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Tablet Tracker — Realtime</title>
+  <meta name="theme-color" content="#146EFF">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    html, body { height: 100%; font-size: 18px; }
-    .card-used { background-color: #d1fae5; }
-    .card-unused { background-color: #f3f4f6; }
-    .card-maintenance { background-color: #fef9c3; }
+    html, body { height: 100%; font-size: 18px; -webkit-tap-highlight-color: transparent; }
+    .card-purchased { background-color: #d1fae5; }   /* green */
+    .card-unused    { background-color: #f3f4f6; }   /* gray  */
+    .card-maint     { background-color: #fef9c3; }   /* yellow */
+    .chip { border-radius: 9999px; padding: 2px 10px; font-size: 12px; }
+    .chip-green { background:#10b981; color:white; }
+    .chip-gray  { background:#e5e7eb; color:#111827; }
+    .chip-yellow{ background:#fde68a; color:#92400e; }
+    .btn { border-radius: 12px; padding: 10px 12px; border: 1px solid #e5e7eb; background: #fff; }
+    .btn-lg { padding: 12px 14px; font-size: 18px; }
+    .btn-sm { padding: 8px 10px; font-size: 16px; }
+    .btn-red { background:#dc2626; color:white; border-color:#dc2626; }
+    .btn-blue { background:#2563eb; color:white; border-color:#2563eb; }
+    .btn-outline { background:white; }
+    .seg button { padding: 10px 12px; border:1px solid #e5e7eb; border-radius:12px; background:white; }
+    .seg button.active { background:#2563eb; color:white; border-color:#2563eb; }
+    .sticky-footer { position: sticky; bottom: 0; background: white; border-top: 1px solid #e5e7eb; padding: 10px; }
     button, input, select { font-size: 18px; }
   </style>
 </head>
 <body class="bg-gray-50 h-full">
-  <main class="max-w-3xl mx-auto p-4 pb-24">
-    <header class="sticky top-0 bg-gray-50/90 backdrop-blur z-10 pt-2 pb-3 mb-2">
-      <h1 class="text-3xl font-bold text-center">Tablet Tracker</h1>
-      <div class="mt-4 flex flex-col gap-3">
-        <select id="filterSelect" class="border rounded-xl px-3 py-2 w-full">
-          <option value="all">Show: All</option>
-          <option value="purchased">Show: Purchased</option>
-          <option value="not">Show: Not purchased</option>
-          <option value="maintenance">Show: Maintenance</option>
-        </select>
-        <input id="searchInput" placeholder="Search tablet # or customer" class="border rounded-xl px-3 py-2 w-full" />
-        <button id="btnRisk" class="bg-red-500 text-white py-3 px-4 rounded-xl text-lg font-bold">RISK TODAY</button>
+<main class="max-w-3xl mx-auto p-4 pb-28" id="root">
+
+  <!-- SETUP (first run) -->
+  <section id="setup" class="hidden">
+    <h1 class="text-3xl font-bold text-center">Tablet Tracker — Setup</h1>
+    <p class="mt-2 text-gray-700 text-center">Paste Firebase config + Org ID. Only once per device.</p>
+    <div class="mt-4 grid gap-3">
+      <label class="block">
+        <span class="text-sm text-gray-600">Firebase Web Config (JSON)</span>
+        <textarea id="cfgJson" class="mt-1 w-full border rounded-xl p-3" rows="8" placeholder='{"apiKey":"","authDomain":"","projectId":"","appId":""}'></textarea>
+      </label>
+      <label class="block">
+        <span class="text-sm text-gray-600">Org / Team ID</span>
+        <input id="orgId" class="mt-1 w-full border rounded-xl p-3" placeholder="my-shop" />
+      </label>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <button id="btnSaveCfg" class="btn btn-lg btn-blue">Save & Start</button>
+        <button id="btnTestCfg" class="btn btn-lg btn-outline">Test Connection</button>
+        <button id="btnCopyInvite" class="btn btn-lg btn-outline">Copy Invite Link</button>
       </div>
-    </header>
+      <p id="setupStatus" class="text-sm text-gray-600 mt-2"></p>
+    </div>
+  </section>
 
-    <section class="mt-4">
-      <div id="cards" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
-    </section>
-  </main>
-
-<script>
-const PASSWORD = "4321"; // 4-digit password
-let state = {};
-const today = new Date().toISOString().slice(0,10);
-if (!state[today]) {
-  state[today] = {};
-  for (let n = 51; n <= 99; n++) {
-    state[today][n] = { used: false, customer: "", maintenance: false };
-  }
-}
-
-function render() {
-  const q = document.querySelector('#searchInput').value.trim().toLowerCase();
-  const filter = document.querySelector('#filterSelect').value;
-  const container = document.querySelector('#cards');
-  container.innerHTML = '';
-
-  const sorted = Object.entries(state[today]).sort((a,b) => {
-    if (a[1].maintenance && !b[1].maintenance) return 1;
-    if (!a[1].maintenance && b[1].maintenance) return -1;
-    return Number(a[0]) - Number(b[0]);
-  });
-
-  sorted.forEach(([id, info]) => {
-    let passFilter =
-      filter === 'all' ||
-      (filter === 'purchased' && info.used) ||
-      (filter === 'not' && !info.used && !info.maintenance) ||
-      (filter === 'maintenance' && info.maintenance);
-    let match = !q || id.includes(q) || (info.customer && info.customer.toLowerCase().includes(q));
-    if (!passFilter || !match) return;
-
-    const card = document.createElement('div');
-    let cardClass = info.maintenance ? 'card-maintenance' : info.used ? 'card-used' : 'card-unused';
-    card.className = `rounded-xl p-3 shadow ${cardClass}`;
-    card.innerHTML = `
-      <div class="flex justify-between items-center">
-        <strong>#${id}</strong>
+  <!-- APP (after config) -->
+  <section id="app" class="hidden">
+    <header class="sticky top-0 bg-gray-50/90 backdrop-blur z-10 pt-2 pb-3 mb-2">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-extrabold">Tablet Tracker</h1>
         <div class="flex gap-2">
-          <input type="checkbox" data-id="${id}" class="toggle-used" ${info.used ? 'checked' : ''}>
-          <input type="checkbox" data-id="${id}" class="toggle-maintenance" title="Maintenance" ${info.maintenance ? 'checked' : ''}>
+          <button id="btnMaint" class="btn btn-sm">Maintenance</button>
+          <button id="btnReset" class="btn btn-sm btn-red">Reset Day</button>
         </div>
       </div>
-      <input placeholder="Customer" value="${info.customer}" data-id="${id}" class="mt-2 w-full border rounded px-2 py-1">
-    `;
-    container.appendChild(card);
-  });
 
-  container.querySelectorAll('.toggle-used').forEach(cb => {
-    cb.addEventListener('change', e => {
-      const id = e.target.getAttribute('data-id');
-      state[today][id].used = e.target.checked;
-      render();
-    });
-  });
+      <!-- Counters -->
+      <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div class="rounded-2xl border bg-white p-3">
+          <div class="text-sm text-gray-500">Purchased</div>
+          <div id="countPurchased" class="text-2xl font-bold">0</div>
+        </div>
+        <div class="rounded-2xl border bg-white p-3">
+          <div class="text-sm text-gray-500">Not Purchased</div>
+          <div id="countUnused" class="text-2xl font-bold">0</div>
+        </div>
+        <div class="rounded-2xl border bg-white p-3">
+          <div class="text-sm text-gray-500">Maintenance</div>
+          <div id="countMaint" class="text-2xl font-bold">0</div>
+        </div>
+      </div>
 
-  container.querySelectorAll('.toggle-maintenance').forEach(cb => {
-    cb.addEventListener('change', e => {
-      const id = e.target.getAttribute('data-id');
-      state[today][id].maintenance = e.target.checked;
-      if (state[today][id].maintenance) {
-        state[today][id].used = false;
-      }
-      render();
-    });
-  });
+      <!-- Segmented filter (maintenance excluded here) -->
+      <div class="seg mt-3 grid grid-cols-3 gap-2">
+        <button data-filter="all"        class="active">All</button>
+        <button data-filter="not">Not</button>
+        <button data-filter="purchased">Purchased</button>
+      </div>
 
-  container.querySelectorAll('input[placeholder="Customer"]').forEach(inp => {
-    inp.addEventListener('input', e => {
-      const id = e.target.getAttribute('data-id');
-      state[today][id].customer = e.target.value;
-    });
-  });
-}
+      <input id="searchInput" placeholder="Search tablet #" class="mt-3 border rounded-xl px-3 py-3 w-full bg-white" />
+      <div class="mt-1 text-sm text-gray-600" id="status">Signing in…</div>
+    </header>
 
-document.querySelector('#searchInput').addEventListener('input', render);
-document.querySelector('#filterSelect').addEventListener('change', render);
+    <!-- Cards (maintenance hidden from main list) -->
+    <section class="mt-4">
+      <div id="cards" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+    </section>
 
-document.querySelector('#btnRisk').addEventListener('click', () => {
-  const pass = prompt('Enter password:');
-  if (pass === PASSWORD) {
-    alert('RISK TODAY action executed!');
-  } else {
-    alert('Incorrect password!');
+    <!-- Sticky bottom actions -->
+    <div class="sticky-footer">
+      <div class="grid grid-cols-2 gap-2">
+        <button id="btnExport" class="btn btn-lg btn-outline">Export CSV</button>
+        <button id="btnMaint2" class="btn btn-lg">Maintenance</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Maintenance Modal (PIN-protected) -->
+<div id="maintModal" class="hidden fixed inset-0 bg-black/40 z-20 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl p-4 w-full max-w-md max-h-[85vh] overflow-auto">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-semibold">Maintenance Mode</h2>
+      <button id="maintClose" class="btn btn-sm">Close</button>
+    </div>
+    <div id="maintPinWrap" class="mt-3">
+      <input id="maintPin" inputmode="numeric" maxlength="4" placeholder="Enter PIN" class="w-full border rounded-xl px-3 py-3" />
+      <button id="maintPinOk" class="btn btn-lg btn-blue w-full mt-2">Enter</button>
+      <p class="text-sm text-gray-600 mt-1">PIN default: 4321</p>
+    </div>
+    <div id="maintBody" class="hidden mt-3">
+      <input id="maintSearch" placeholder="Search tablet #" class="border rounded-xl px-3 py-2 w-full" />
+      <div id="maintCards" class="grid grid-cols-2 gap-2 mt-3"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm modal for changing away from Purchased -->
+<div id="confirmModal" class="hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center">
+  <div class="bg-white rounded-2xl p-4 w-80">
+    <h2 class="text-lg font-semibold">Change status from Purchased?</h2>
+    <p class="text-sm text-gray-600 mt-1">This prevents accidental un‑purchasing.</p>
+    <div class="mt-3 grid grid-cols-2 gap-2">
+      <button id="confirmToUnused" class="btn btn-lg">To Unused</button>
+      <button id="confirmCancel" class="btn btn-lg btn-outline">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  /* ----------------------- Config & helpers ----------------------- */
+  const STORAGE_KEY = 'tt-rt-config-v2';
+  const RESET_PIN = '4321';
+  const RANGE_START = 51, RANGE_END = 99;
+
+  const $  = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const statusEl = $('#status');
+
+  const urlParams = new URLSearchParams(location.search);
+  const b64 = obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+  const fromB64 = s => { try { return JSON.parse(decodeURIComponent(escape(atob(s)))); } catch { return null; } };
+  const saveCfg = cfg => localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  const loadCfg = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } };
+  const todayISO = () => { const d=new Date(); const tz=d.getTimezoneOffset(); return new Date(d - tz*60000).toISOString().slice(0,10); };
+
+  /* Accept ?config= invite links */
+  if (urlParams.get('config')) {
+    const incoming = fromB64(urlParams.get('config'));
+    if (incoming && incoming.firebase && incoming.orgId) {
+      saveCfg(incoming);
+      history.replaceState({}, '', location.pathname);
+    }
   }
-});
 
-window.addEventListener('load', render);
+  const cfg = loadCfg();
+  const hasCfg = !!cfg.firebase;
+  $('#setup').classList.toggle('hidden', hasCfg);
+  $('#app').classList.toggle('hidden', !hasCfg);
+
+  /* ---------------------------- Setup ---------------------------- */
+  if (!hasCfg) {
+    $('#btnSaveCfg').addEventListener('click', () => {
+      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='Invalid JSON'; return; }
+      const orgId = $('#orgId').value.trim() || 'default-org';
+      saveCfg({ firebase: firebaseCfg, orgId });
+      location.reload();
+    });
+    $('#btnTestCfg').addEventListener('click', async () => {
+      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='Invalid JSON'; return; }
+      $('#setupStatus').textContent='Testing…';
+      try {
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
+        const { getAuth, signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
+        const app = initializeApp(firebaseCfg); const auth = getAuth(app);
+        await signInAnonymously(auth);
+        $('#setupStatus').textContent='Success! Save & Start.';
+      } catch (e) { console.error(e); $('#setupStatus').textContent='Failed to connect. Check config.'; }
+    });
+    $('#btnCopyInvite').addEventListener('click', () => {
+      let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { alert('Invalid JSON'); return; }
+      const orgId = $('#orgId').value.trim() || 'default-org';
+      const url = location.origin + location.pathname + '?config=' + b64({ firebase: firebaseCfg, orgId });
+      navigator.clipboard.writeText(url).then(()=> alert('Invite link copied!'));
+    });
+  }
+
+  /* ------------------------------ App ---------------------------- */
+  if (hasCfg) {
+    const { firebase, orgId: ORG_ID } = cfg;
+
+    // Firebase SDK (modular, CDN)
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
+    const { getAuth, signInAnonymously, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
+    const {
+      getFirestore, doc, getDocs, updateDoc, collection,
+      onSnapshot, writeBatch
+    } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+
+    const app = initializeApp(firebase);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const today = todayISO();
+    const dayCol = collection(db, "orgs", ORG_ID, "days", today, "tablets");
+    const dayDoc = (id) => doc(db, "orgs", ORG_ID, "days", today, "tablets", String(id));
+
+    let unsubscribe = null;
+    let cache = new Map(); // id -> {status:'unused'|'purchased'|'maint'}
+
+    async function ensureToday() {
+      const snap = await getDocs(dayCol);
+      if (!snap.empty) return;
+      const batch = writeBatch(db);
+      for (let n = RANGE_START; n <= RANGE_END; n++) {
+        batch.set(dayDoc(n), { status: 'unused', updatedAt: Date.now() });
+      }
+      await batch.commit();
+    }
+
+    function recalcCounters() {
+      let purchased = 0, maint = 0, unused = 0;
+      for (const [,v] of cache) {
+        if (v.status === 'purchased') purchased++;
+        else if (v.status === 'maint') maint++;
+        else unused++;
+      }
+      $('#countPurchased').textContent = purchased;
+      $('#countMaint').textContent = maint;
+      $('#countUnused').textContent = unused; // Not Purchased excludes maintenance
+    }
+
+    function setActiveFilter(val) {
+      $$('.seg button').forEach(b => b.classList.toggle('active', b.dataset.filter === val));
+    }
+
+    function render() {
+      const filter = ($('.seg button.active')?.dataset.filter) || 'all';
+      const search = $('#searchInput').value.trim().toLowerCase();
+      const container = $('#cards'); container.innerHTML = '';
+
+      const entries = [...cache.entries()].sort((a,b)=> Number(a[0]) - Number(b[0]));
+
+      for (const [id, info] of entries) {
+        if (info.status === 'maint') continue; // hidden from main list
+        const pass = (filter === 'all') ||
+                     (filter === 'purchased' && info.status === 'purchased') ||
+                     (filter === 'not' && info.status === 'unused');
+        const match = !search || id.includes(search);
+        if (!pass || !match) continue;
+
+        const cls = info.status === 'purchased' ? 'card-purchased' : 'card-unused';
+        const chip = info.status === 'purchased'
+          ? `<span class="chip chip-green">Purchased</span>`
+          : `<span class="chip chip-gray">Not purchased</span>`;
+
+        const card = document.createElement('div');
+        card.className = `rounded-2xl border p-3 ${cls}`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="font-semibold text-lg">#${id}</div>
+            ${chip}
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-2">
+            <button class="btn btn-lg btnStatus" data-id="${id}" data-next="purchased">Mark Purchased</button>
+            <button class="btn btn-lg btnStatus" data-id="${id}" data-next="unused">Mark Not</button>
+          </div>
+        `;
+        container.appendChild(card);
+      }
+
+      // Safer un-purchase
+      container.querySelectorAll('.btnStatus').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id   = e.currentTarget.getAttribute('data-id');
+          const next = e.currentTarget.getAttribute('data-next');
+          const current = cache.get(id)?.status || 'unused';
+          if (current === 'purchased' && next === 'unused') {
+            openConfirm(id); return;
+          }
+          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); }
+          catch { alert('Update failed'); }
+        });
+      });
+    }
+
+    // Confirm modal logic
+    let confirmId = null;
+    function openConfirm(id){ confirmId = id; $('#confirmModal').classList.remove('hidden'); }
+    $('#confirmCancel').addEventListener('click', ()=>$('#confirmModal').classList.add('hidden'));
+    $('#confirmToUnused').addEventListener('click', async ()=>{
+      if (!confirmId) return;
+      try { await updateDoc(dayDoc(confirmId), { status:'unused', updatedAt: Date.now() }); } catch {}
+      $('#confirmModal').classList.add('hidden'); confirmId = null;
+    });
+
+    async function subscribe() {
+      if (unsubscribe) unsubscribe();
+      statusEl.textContent = 'Loading today…';
+      await ensureToday();
+      unsubscribe = onSnapshot(dayCol, (snap) => {
+        const map = new Map();
+        snap.forEach(docSnap => { const d = docSnap.data(); map.set(docSnap.id, { status: d.status || 'unused' }); });
+        cache = map;
+        statusEl.textContent = `Live — ${map.size} tablets`;
+        recalcCounters();
+        render();
+      }, (err) => { console.error(err); statusEl.textContent = 'Error: cannot subscribe.'; });
+    }
+
+    // Export CSV
+    function exportCSV() {
+      const t = new Date().toISOString().slice(0,10);
+      const rows = [["date","tablet","status"]];
+      for (const [id, info] of [...cache.entries()].sort((a,b)=>Number(a[0])-Number(b[0]))) {
+        rows.push([t, id, info.status]);
+      }
+      const csv = rows.map(r => r.map(x => `"${String(x)}"`).join(",")).join("\n");
+      const blob = new Blob([csv], {type: "text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download=`tablet-tracker-${t}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Reset day (PIN)
+    async function resetDay() {
+      const pin = prompt('Enter PIN:');
+      if (pin !== RESET_PIN) { alert('Incorrect PIN'); return; }
+      if (!confirm('Reset today for all tablets?')) return;
+      try {
+        const snap = await getDocs(dayCol);
+        const { writeBatch } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+        const batch = writeBatch(db);
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        await ensureToday();
+        alert('Reset complete.');
+      } catch (e) { alert('Reset failed'); }
+    }
+
+    // Maintenance modal
+    function openMaint(){ $('#maintModal').classList.remove('hidden'); $('#maintPinWrap').classList.remove('hidden'); $('#maintBody').classList.add('hidden'); }
+    function closeMaint(){ $('#maintModal').classList.add('hidden'); }
+    $('#maintClose').addEventListener('click', closeMaint);
+    $('#maintPinOk').addEventListener('click', () => {
+      const val = $('#maintPin').value.trim();
+      if (val !== RESET_PIN) { alert('Wrong PIN'); return; }
+      $('#maintPinWrap').classList.add('hidden');
+      $('#maintBody').classList.remove('hidden');
+      renderMaint();
+    });
+
+    function renderMaint() {
+      const q = $('#maintSearch').value.trim().toLowerCase();
+      const cont = $('#maintCards'); cont.innerHTML='';
+      const entries = [...cache.entries()].sort((a,b)=>Number(a[0])-Number(b[0]));
+      for (const [id, info] of entries) {
+        if (q && !String(id).includes(q)) continue;
+        const cls = info.status === 'maint' ? 'card-maint' : 'card-unused';
+        const card = document.createElement('div');
+        card.className = `rounded-2xl border p-3 ${cls}`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="font-semibold">#${id}</div>
+            <button class="btn btn-sm btnMaintToggle" data-id="${id}">${info.status==='maint'?'Remove':'Set'} Maint</button>
+          </div>
+          <div class="text-sm mt-1">${info.status==='maint'?'🛠 In maintenance':'—'}</div>
+        `;
+        cont.appendChild(card);
+      }
+      cont.querySelectorAll('.btnMaintToggle').forEach(b => {
+        b.addEventListener('click', async (e)=>{
+          const id = e.currentTarget.getAttribute('data-id');
+          const curr = cache.get(id)?.status || 'unused';
+          const next = curr === 'maint' ? 'unused' : 'maint';
+          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); } catch { alert('Update failed'); }
+        });
+      });
+      $('#maintSearch').oninput = renderMaint;
+    }
+
+    // Bind UI
+    $$('.seg button').forEach(b => b.addEventListener('click', () => { setActiveFilter(b.dataset.filter); render(); }));
+    $('#searchInput').addEventListener('input', render);
+    $('#btnExport').addEventListener('click', exportCSV);
+    $('#btnReset').addEventListener('click', resetDay);
+    $('#btnMaint').addEventListener('click', openMaint);
+    $('#btnMaint2').addEventListener('click', openMaint);
+
+    // Auth + start
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { statusEl.textContent = 'Signing in…'; await signInAnonymously(auth); return; }
+      subscribe();
+    });
+  }
 </script>
 </body>
 </html>
