@@ -56,7 +56,10 @@
   <section id="app" class="hidden">
     <header class="sticky top-0 bg-gray-50/90 backdrop-blur z-10 pt-2 pb-3 mb-2">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-extrabold">מעקב טאבלטים</h1>
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl font-extrabold">מעקב טאבלטים</h1>
+          <button id="btnHelp" class="btn btn-sm" title="עזרה">❓</button>
+        </div>
         <div class="flex gap-2">
           <button id="btnMaint" class="btn btn-sm">מצב תחזוקה</button>
           <button id="btnReset" class="btn btn-sm btn-red">איפוס יום</button>
@@ -79,7 +82,14 @@
         </div>
       </div>
 
-      <!-- מסנן מקוטע (תחזוקה לא מוצגת כאן) -->
+      <!-- פס הסבר צבעים -->
+      <div class="mt-3 flex items-center gap-3 text-sm text-gray-700">
+        <span class="chip chip-green">נרכש</span>
+        <span class="chip chip-gray">לא נרכש</span>
+        <span class="chip chip-yellow">תחזוקה (מוסתר ברשימה)</span>
+      </div>
+
+      <!-- מסנן -->
       <div class="seg mt-3 grid grid-cols-3 gap-2">
         <button data-filter="all"        class="active">הכל</button>
         <button data-filter="not">לא</button>
@@ -105,13 +115,14 @@
   </section>
 </main>
 
-<!-- חלון מצב תחזוקה (מוגן סיסמה) -->
+<!-- חלון מצב תחזוקה (מוגן PIN) -->
 <div id="maintModal" class="hidden fixed inset-0 bg-black/40 z-20 flex items-center justify-center p-4">
   <div class="bg-white rounded-2xl p-4 w-full max-w-md max-h-[85vh] overflow-auto">
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold">מצב תחזוקה</h2>
       <button id="maintClose" class="btn btn-sm">סגור</button>
     </div>
+    <p class="text-sm text-gray-600 mt-2">מצב תחזוקה מסתיר טאבלט מהרשימה הראשית ולא סופרים אותו.</p>
     <div id="maintPinWrap" class="mt-3">
       <input id="maintPin" inputmode="numeric" maxlength="4" placeholder="הכנס קוד PIN" class="w-full border rounded-xl px-3 py-3" />
       <button id="maintPinOk" class="btn btn-lg btn-blue w-full mt-2">כניסה</button>
@@ -124,11 +135,26 @@
   </div>
 </div>
 
-<!-- החלון לאישור שינוי מ-נרכש ללא -->
+<!-- חלון עזרה / היכרות מהירה -->
+<div id="helpModal" class="hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl p-4 w-full max-w-md">
+    <h2 class="text-xl font-bold">איך עובדים?</h2>
+    <ol class="list-decimal pr-6 mt-2 space-y-2 text-gray-700 text-sm">
+      <li>הרשימה כוללת את הטאבלטים #51–#99 בלבד.</li>
+      <li>כדי לסמן קנייה: לחץ על <b>סמן כנרכש</b>. אפשר לפלטר לפי נרכש/לא.</li>
+      <li>כדי לבטל קנייה: לחץ <b>סמן כלא</b> ותופיע בקשת אישור.</li>
+      <li>כדי להכניס/להוציא מתחזוקה: פתח <b>מצב תחזוקה</b> (עם PIN).</li>
+      <li>כדי לאפס את היום: <b>איפוס יום</b> (עם PIN).</li>
+    </ol>
+    <button id="helpClose" class="btn btn-lg btn-blue w-full mt-3">הבנתי</button>
+  </div>
+</div>
+
+<!-- חלון אישור עבור שינוי מ״נרכש״ ל״לא״ -->
 <div id="confirmModal" class="hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center">
   <div class="bg-white rounded-2xl p-4 w-80">
     <h2 class="text-lg font-semibold">להחזיר מ״נרכש״ ל״לא״?</h2>
-    <p class="text-sm text-gray-600 mt-1">מגן מפני שינוי בטעות.</p>
+    <p class="text-sm text-gray-600 mt-1">זה מגן מפני שינוי בטעות.</p>
     <div class="mt-3 grid grid-cols-2 gap-2">
       <button id="confirmToUnused" class="btn btn-lg">החזר ללא</button>
       <button id="confirmCancel" class="btn btn-lg btn-outline">ביטול</button>
@@ -138,9 +164,11 @@
 
 <script type="module">
   /* ----------------------- קונפיג & עזרים ----------------------- */
-  const STORAGE_KEY = 'tt-rt-config-v2';
+  const STORAGE_KEYS = ['tt-rt-config-v2','tt-rt-config-v1','tt-rt-config'];
+  const SAVE_KEY = 'tt-rt-config-v2';
   const RESET_PIN = '4321';
   const RANGE_START = 51, RANGE_END = 99;
+  const ONBOARD_KEY = 'tt-onboard-seen';
 
   const $  = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
@@ -149,20 +177,16 @@
   const urlParams = new URLSearchParams(location.search);
   const b64 = obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
   const fromB64 = s => { try { return JSON.parse(decodeURIComponent(escape(atob(s)))); } catch { return null; } };
-  const saveCfg = cfg => localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-  const loadCfg = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } };
+  const saveCfg = cfg => localStorage.setItem(SAVE_KEY, JSON.stringify(cfg));
+  const tryLoad = () => { for (const k of STORAGE_KEYS) { try { const v = localStorage.getItem(k); if (v) return JSON.parse(v); } catch {} } return {}; };
   const todayISO = () => { const d=new Date(); const tz=d.getTimezoneOffset(); return new Date(d - tz*60000).toISOString().slice(0,10); };
 
-  /* קבלת קישור הזמנה עם ?config= */
   if (urlParams.get('config')) {
     const incoming = fromB64(urlParams.get('config'));
-    if (incoming && incoming.firebase && incoming.orgId) {
-      saveCfg(incoming);
-      history.replaceState({}, '', location.pathname);
-    }
+    if (incoming && incoming.firebase && incoming.orgId) { saveCfg(incoming); history.replaceState({}, '', location.pathname); }
   }
 
-  const cfg = loadCfg();
+  const cfg = tryLoad();
   const hasCfg = !!cfg.firebase;
   $('#setup').classList.toggle('hidden', hasCfg);
   $('#app').classList.toggle('hidden', !hasCfg);
@@ -171,7 +195,7 @@
   if (!hasCfg) {
     $('#btnSaveCfg').addEventListener('click', () => {
       let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { $('#setupStatus').textContent='JSON לא תקין'; return; }
-      const orgId = $('#orgId').value.trim() || 'default-org';
+      const orgId = $('#orgId').value.trim() או 'default-org';
       saveCfg({ firebase: firebaseCfg, orgId });
       location.reload();
     });
@@ -188,7 +212,7 @@
     });
     $('#btnCopyInvite').addEventListener('click', () => {
       let firebaseCfg; try { firebaseCfg = JSON.parse($('#cfgJson').value.trim()); } catch { alert('JSON לא תקין'); return; }
-      const orgId = $('#orgId').value.trim() || 'default-org';
+      const orgId = $('#orgId').value.trim() או 'default-org';
       const url = location.origin + location.pathname + '?config=' + b64({ firebase: firebaseCfg, orgId });
       navigator.clipboard.writeText(url).then(()=> alert('קישור הועתק!'));
     });
@@ -201,10 +225,7 @@
     // Firebase SDK (modular, CDN)
     const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
     const { getAuth, signInAnonymously, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js');
-    const {
-      getFirestore, doc, getDocs, updateDoc, collection,
-      onSnapshot, writeBatch
-    } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+    const { getFirestore, doc, getDocs, updateDoc, collection, onSnapshot, writeBatch } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
 
     const app = initializeApp(firebase);
     const auth = getAuth(app);
@@ -221,47 +242,35 @@
       const snap = await getDocs(dayCol);
       if (!snap.empty) return;
       const batch = writeBatch(db);
-      for (let n = RANGE_START; n <= RANGE_END; n++) {
-        batch.set(dayDoc(n), { status: 'unused', updatedAt: Date.now() });
-      }
+      for (let n = RANGE_START; n <= RANGE_END; n++) { batch.set(dayDoc(n), { status: 'unused', updatedAt: Date.now() }); }
       await batch.commit();
     }
 
     function recalcCounters() {
       let purchased = 0, maint = 0, unused = 0;
-      for (const [,v] of cache) {
-        if (v.status === 'purchased') purchased++;
-        else if (v.status === 'maint') maint++;
-        else unused++;
-      }
+      for (const [,v] of cache) { if (v.status === 'purchased') purchased++; else if (v.status === 'maint') maint++; else unused++; }
       $('#countPurchased').textContent = purchased;
       $('#countMaint').textContent = maint;
       $('#countUnused').textContent = unused;
     }
 
-    function setActiveFilter(val) {
-      $$('.seg button').forEach(b => b.classList.toggle('active', b.dataset.filter === val));
-    }
+    function setActiveFilter(val) { $$('.seg button').forEach(b => b.classList.toggle('active', b.dataset.filter === val)); }
 
     function render() {
-      const filter = ($('.seg button.active')?.dataset.filter) || 'all';
+      const filter = ($('.seg button.active')?.dataset.filter) או 'all';
       const search = $('#searchInput').value.trim().toLowerCase();
       const container = $('#cards'); container.innerHTML = '';
 
       const entries = [...cache.entries()].sort((a,b)=> Number(a[0]) - Number(b[0]));
 
       for (const [id, info] of entries) {
-        if (info.status === 'maint') continue; // לא מציגים תחזוקה ברשימה הראשית
-        const pass = (filter === 'all') ||
-                     (filter === 'purchased' && info.status === 'purchased') ||
-                     (filter === 'not' && info.status === 'unused');
+        if (info.status === 'maint') continue;
+        const pass = (filter === 'all') או (filter === 'purchased' && info.status === 'purchased') או (filter === 'not' && info.status === 'unused');
         const match = !search || id.includes(search);
         if (!pass || !match) continue;
 
         const cls = info.status === 'purchased' ? 'card-purchased' : 'card-unused';
-        const chip = info.status === 'purchased'
-          ? `<span class="chip chip-green">נרכש</span>`
-          : `<span class="chip chip-gray">לא נרכש</span>`;
+        const chip = info.status === 'purchased' ? `<span class="chip chip-green">נרכש</span>` : `<span class="chip chip-gray">לא נרכש</span>`;
 
         const card = document.createElement('div');
         card.className = `rounded-2xl border p-3 ${cls}`;
@@ -278,20 +287,18 @@
         container.appendChild(card);
       }
 
-      // הגנה משינוי בטעות
       container.querySelectorAll('.btnStatus').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const id   = e.currentTarget.getAttribute('data-id');
           const next = e.currentTarget.getAttribute('data-next');
           const current = cache.get(id)?.status || 'unused';
           if (current === 'purchased' && next === 'unused') { openConfirm(id); return; }
-          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); }
-          catch { alert('עדכון נכשל'); }
+          try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); } catch { alert('עדכון נכשל'); }
         });
       });
     }
 
-    // חלון אישור
+    // אישור החזרה ל"לא"
     let confirmId = null;
     function openConfirm(id){ confirmId = id; $('#confirmModal').classList.remove('hidden'); }
     $('#confirmCancel').addEventListener('click', ()=>$('#confirmModal').classList.add('hidden'));
@@ -307,11 +314,12 @@
       await ensureToday();
       unsubscribe = onSnapshot(dayCol, (snap) => {
         const map = new Map();
-        snap.forEach(docSnap => { const d = docSnap.data(); map.set(docSnap.id, { status: d.status || 'unused' }); });
+        snap.forEach(docSnap => { const d = docSnap.data(); map.set(docSnap.id, { status: d.status או 'unused' }); });
         cache = map;
         statusEl.textContent = `מחובר — ${map.size} טאבלטים`;
         recalcCounters();
         render();
+        showOnboardingOnce();
       }, (err) => { console.error(err); statusEl.textContent = 'שגיאה: לא ניתן להתחבר.'; });
     }
 
@@ -319,9 +327,7 @@
     function exportCSV() {
       const t = new Date().toISOString().slice(0,10);
       const rows = [["date","tablet","status"]];
-      for (const [id, info] of [...cache.entries()].sort((a,b)=>Number(a[0])-Number(b[0]))) {
-        rows.push([t, id, info.status]);
-      }
+      for (const [id, info] of [...cache.entries()].sort((a,b)=>Number(a[0])-Number(b[0]))) rows.push([t, id, info.status]);
       const csv = rows.map(r => r.map(x => `"${String(x)}"`).join(",")).join("
 ");
       const blob = new Blob([csv], {type: "text/csv"});
@@ -330,14 +336,13 @@
       URL.revokeObjectURL(url);
     }
 
-    // איפוס יום (סיסמה)
+    // איפוס יום (PIN)
     async function resetDay() {
       const pin = prompt('הכנס PIN:');
       if (pin !== RESET_PIN) { alert('PIN שגוי'); return; }
       if (!confirm('לאפס את היום לכל הטאבלטים?')) return;
       try {
         const snap = await getDocs(dayCol);
-        const { writeBatch } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
         const batch = writeBatch(db);
         snap.forEach(d => batch.delete(d.ref));
         await batch.commit();
@@ -346,7 +351,7 @@
       } catch (e) { alert('האיפוס נכשל'); }
     }
 
-    // מודל תחזוקה
+    // תחזוקה
     function openMaint(){ $('#maintModal').classList.remove('hidden'); $('#maintPinWrap').classList.remove('hidden'); $('#maintBody').classList.add('hidden'); }
     function closeMaint(){ $('#maintModal').classList.add('hidden'); }
     $('#maintClose').addEventListener('click', closeMaint);
@@ -376,16 +381,27 @@
         `;
         cont.appendChild(card);
       }
-      cont.querySelectorAll('.btnMaintToggle').forEach(b => {
-        b.addEventListener('click', async (e)=>{
+      cont.querySelectorAll('.btnMaintToggle').forEach ב => {
+        ב.addEventListener('click', async (e)=>{
           const id = e.currentTarget.getAttribute('data-id');
-          const curr = cache.get(id)?.status || 'unused';
+          const curr = cache.get(id)?.status או 'unused';
           const next = curr === 'maint' ? 'unused' : 'maint';
           try { await updateDoc(dayDoc(id), { status: next, updatedAt: Date.now() }); } catch { alert('עדכון נכשל'); }
         });
       });
       $('#maintSearch').oninput = renderMaint;
     }
+
+    // עזרה / היכרות מהירה
+    function showOnboardingOnce(){
+      if (localStorage.getItem(ONBOARD_KEY)) return;
+      openHelp();
+      localStorage.setItem(ONBOARD_KEY, '1');
+    }
+    function openHelp(){ $('#helpModal').classList.remove('hidden'); }
+    function closeHelp(){ $('#helpModal').classList.add('hidden'); }
+    $('#btnHelp').addEventListener('click', openHelp);
+    $('#helpClose').addEventListener('click', closeHelp);
 
     // קישורי UI
     $$('.seg button').forEach(b => b.addEventListener('click', () => { setActiveFilter(b.dataset.filter); render(); }));
