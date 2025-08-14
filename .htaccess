@@ -1,0 +1,3 @@
+# Handle Chrome DevTools 404 request
+RewriteEngine On
+RewriteRule ^\.well-known/appspecific/com\.chrome\.devtools\.json$ - [R=200,L]
